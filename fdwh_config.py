@@ -31,5 +31,6 @@ VAR_RP_TRASH = _var_prefix + 'RP_TRASH'
 VAR_TG_TOKEN = _var_prefix + 'TG_BOT_TOKEN'
 VAR_TG_USER_IDS = _var_prefix + 'TG_USER_IDS'
 
+VAR_AI_DESCR_ENDPOINT = _var_prefix + 'AI_DESCR_ENDPOINT'
 VAR_METADATA_ENDPOINT = _var_prefix + 'METADATA_ENDPOINT'
 VAR_EXIF_TS_ENDPOINT = _var_prefix + 'EXIF_TS_ENDPOINT'
