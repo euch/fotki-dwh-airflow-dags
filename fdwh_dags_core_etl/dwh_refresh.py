@@ -1,6 +1,11 @@
+import socket
+from urllib.parse import urlparse
+
 from airflow import DAG
 from airflow.models import Variable
 from airflow.providers.common.sql.operators.sql import SQLExecuteQueryOperator
+from airflow.providers.standard.operators.empty import EmptyOperator
+from airflow.providers.standard.operators.python import BranchPythonOperator
 from airflow.utils.task_group import TaskGroup
 
 from fdwh_config import *
@@ -9,6 +14,27 @@ from fdwh_operators.add_metadata_operator import AddMetadataOperator
 from fdwh_operators.bulk_insert_operator import BulkInsertOperator
 from fdwh_operators.create_remote_tree_csv_operator import CreateRemoteTreeCsvOperator
 from fdwh_operators.smb_download_operator import SmbDownloadOperator
+
+
+def route_check_host_port(url, task_name_ok, task_name_fail):
+    host, port = _parse_host_and_port(url)
+    return task_name_ok if _is_host_port_available(host, port) else task_name_fail
+
+
+def _parse_host_and_port(url: str):
+    parsed_url = urlparse(url)
+    host = parsed_url.hostname
+    port = parsed_url.port if parsed_url.port else (80 if parsed_url.scheme == 'http' else 443)
+    return host, port
+
+
+def _is_host_port_available(host, port):
+    try:
+        with socket.create_connection((host, port), timeout=5):
+            return True
+    except (socket.timeout, socket.error):
+        return False
+
 
 with (DAG(dag_id=DAG_NAME_DWH_REFRESH, max_active_runs=1, schedule=SCHEDULE_DAILY) as dag):
     def refresh_raw(smb_conn_name: str, tree_file_csv_rp: str, tree_file_csv_lp: str, pg_tree_table: str):
@@ -88,6 +114,13 @@ with (DAG(dag_id=DAG_NAME_DWH_REFRESH, max_active_runs=1, schedule=SCHEDULE_DAIL
                         rp=Variable.get(VAR_RP_TRASH))
 
         with TaskGroup(group_id='add_missing_ai_descr') as add_missing_ai_descr:
+            check_ai_helper = BranchPythonOperator(task_id='check_ai_helper',
+                                                   python_callable=route_check_host_port,
+                                                   op_args=[Variable.get(VAR_AI_DESCR_ENDPOINT),
+                                                            'edm.add_missing_ai_descr.proceed_with_task',
+                                                            'edm.add_missing_ai_descr.skip_task'])
+            proceed_with_task = EmptyOperator(task_id='proceed_with_task')
+            skip_task = EmptyOperator(task_id='skip_task')
 
             with TaskGroup(group_id='collection') as add_ai_descr_collection:
                 SQLExecuteQueryOperator(
@@ -99,6 +132,12 @@ with (DAG(dag_id=DAG_NAME_DWH_REFRESH, max_active_runs=1, schedule=SCHEDULE_DAIL
                     xcom_key='edm.add_missing_ai_descr.collection.find_missing',
                     pg_conn_name=CONN_POSTGRES,
                     ai_descr_endpoint=Variable.get(VAR_AI_DESCR_ENDPOINT))
+
+            end = EmptyOperator(task_id='end', trigger_rule='one_success')
+
+            check_ai_helper >> [proceed_with_task, skip_task]
+            skip_task >> end
+            proceed_with_task >> [add_ai_descr_collection] >> end
 
         tree_delete_old >> tree_insert_new >> add_missing_metadata >> add_missing_ai_descr
 
