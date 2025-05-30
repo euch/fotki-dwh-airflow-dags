@@ -146,7 +146,7 @@ def import_file(basename, local_filepath, smb_hook_collection, timestamp) -> Pro
 
 def tg_notif(**kwargs):
     ti = kwargs['ti']
-    xcom = dict(ti.xcom_pull(dag_id=DagName.PROCESS_LANDING_FILES, task_ids=PROCESS_EACH_LANDING_FILE_TASK_ID))
+    xcom = dict(ti.xcom_pull(dag_id=DagName.INGEST_LANDING_FILES, task_ids=PROCESS_EACH_LANDING_FILE_TASK_ID))
     msg1 = 'Imported Images: ' + str(xcom['count_imported_images'])
     msg2 = 'Imported Companion Files: ' + str(xcom['count_companion_files'])
     msg3 = 'Rejected Files: ' + str(xcom['count_rejected_files'])

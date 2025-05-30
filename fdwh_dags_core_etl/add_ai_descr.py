@@ -16,6 +16,9 @@ from fdwh_config import Conn, VariableName, AssetName
 def add_missing_ai_descr_collection(context: dict, fdwh_ai_descr_helper_avail: Asset,
                                     fdwh_missing_aidc: Asset) -> None:
     avail: bool = context["inlet_events"][fdwh_ai_descr_helper_avail][-1].source_task_instance.xcom_pull()
+
+    print(avail)
+
     if avail:
         items = context["inlet_events"][fdwh_missing_aidc][-1].source_task_instance.xcom_pull()
         if len(items) > 0:
