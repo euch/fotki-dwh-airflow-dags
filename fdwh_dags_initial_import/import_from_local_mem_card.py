@@ -6,10 +6,10 @@ from airflow.providers.ssh.operators.ssh import SSHOperator
 
 from fdwh_config import *
 
-TG_USER_IDS = list(map(int, Variable.get(VAR_TG_USER_IDS).split(',')))
+TG_USER_IDS = list(map(int, Variable.get(VariableName.TG_USER_IDS).split(',')))
 
 
-@dag(dag_id=DAG_NAME_DWH_INITIAL_IMPORT, max_active_runs=1, schedule=None)
+@dag(dag_id=DagName.IMPORT_FROM_LOCAL_MEM_CARD, max_active_runs=1, schedule=None)
 def create_dag():
     mount_sd_card = SSHOperator(
         task_id="mount_sd_card",
@@ -30,14 +30,14 @@ def create_dag():
 
     @task
     def send_tg_notif():
-        bot = telebot.TeleBot(Variable.get(VAR_TG_TOKEN))
+        bot = telebot.TeleBot(Variable.get(VariableName.TG_TOKEN))
         for user_id in TG_USER_IDS:
             bot.send_message(user_id,
                              "All files were successfully copied from the SD card to the landing directory. Running dwh_import.")
 
     trigger_dwh_import = TriggerDagRunOperator(
-        task_id="trigger_" + DAG_NAME_DWH_IMPORT,
-        trigger_dag_id=DAG_NAME_DWH_IMPORT,
+        task_id="trigger_" + DagName.PROCESS_LANDING_FILES,
+        trigger_dag_id=DagName.PROCESS_LANDING_FILES,
         wait_for_completion=False),
 
     mount_sd_card >> copy_from_sd_to_landing >> umount_sd_card >> send_tg_notif() >> trigger_dwh_import
