@@ -7,6 +7,8 @@ class Conn:
 
     POSTGRES = _conn_prefix + 'postgres'
 
+    MINIO = 'fdwhminio' # todo change to _conn_prefix + 'minio'
+
     SMB_ARCHIVE = _conn_prefix + "storage_smb_archive"
     SMB_COLLECTION = _conn_prefix + "storage_smb_collection"
     SMB_TRASH = _conn_prefix + "storage_smb_trash"
@@ -21,11 +23,13 @@ class DagName:
     FIND_COLLECTION_DUPLICATES = _prefix + 'find_collection_duplicates'
     RM_COLLECTION_DUPLICATES = _prefix + 'rm_collection_duplicates'
     IMPORT_FROM_LOCAL_MEM_CARD = _prefix + 'import_from_local_mem_card'
-    PROCESS_LANDING_FILES = _prefix + 'process_landing_files'
+    PROCESS_SMB_LANDING_FILES = _prefix + 'process_smb_landing_files'
     REFRESH_STORAGE_TREE_INDEX = _prefix + 'refresh_storage_tree_index'
 
 
 class AssetName:
+    IMPORT_RESULT = 'fdwh_import_result'
+
     MISSING_METADATA_ARCHIVE = 'fdwh_missing_ma'
     MISSING_METADATA_COLLECTION = 'fdwh_missing_mc'
     MISSING_METADATA_TRASH = 'fdwh_missing_mt'
@@ -48,8 +52,9 @@ class ImportSettings:
 class VariableName:
     _var_prefix = 'FDWH_'
 
-    LP_LANDING = _var_prefix + 'LP_LANDING'
-    LP_REJECTED = _var_prefix + 'LP_REJECTED'
+    BUCKET_LANDING = _var_prefix + 'BUCKET_LANDING'
+    BUCKET_REJECTED_DUPLICATES = _var_prefix + 'BUCKET_REJECTED_DUPLICATES'
+    BUCKET_REJECTED_UNSUPPORTED = _var_prefix + 'BUCKET_REJECTED_UNSUPPORTED'
 
     RP_ARCHIVE = _var_prefix + 'RP_ARCHIVE'
     RP_COLLECTION = _var_prefix + 'RP_COLLECTION'

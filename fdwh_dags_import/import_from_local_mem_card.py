@@ -36,8 +36,8 @@ def create_dag():
                              "All files were successfully copied from the SD card to the landing directory. Running dwh_import.")
 
     trigger_dwh_import = TriggerDagRunOperator(
-        task_id="trigger_" + DagName.PROCESS_LANDING_FILES,
-        trigger_dag_id=DagName.PROCESS_LANDING_FILES,
+        task_id="trigger_" + DagName.PROCESS_SMB_LANDING_FILES,
+        trigger_dag_id=DagName.PROCESS_SMB_LANDING_FILES,
         wait_for_completion=False),
 
     mount_sd_card >> copy_from_sd_to_landing >> umount_sd_card >> send_tg_notif() >> trigger_dwh_import
