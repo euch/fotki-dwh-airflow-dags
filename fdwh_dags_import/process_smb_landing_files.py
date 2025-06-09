@@ -156,7 +156,8 @@ def tg_notif(**kwargs):
         bot.send_message(user_id, msg)
 
 
-with DAG(dag_id=DagName.PROCESS_SMB_LANDING_FILES, max_active_runs=1, schedule=SCHEDULE_MANUAL) as dag:
+with DAG(dag_id=DagName.PROCESS_SMB_LANDING_FILES, max_active_runs=1, schedule=SCHEDULE_MANUAL,
+         default_args=dag_default_args) as dag:
     dwh_refresh_before = TriggerDagRunOperator(
         task_id="trigger_" + DagName.REFRESH_STORAGE_TREE_INDEX + "_before",
         trigger_dag_id=DagName.REFRESH_STORAGE_TREE_INDEX,

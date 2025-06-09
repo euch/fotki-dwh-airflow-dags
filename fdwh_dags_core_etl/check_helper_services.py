@@ -3,12 +3,13 @@ from datetime import timedelta
 from urllib.parse import urlparse
 
 from airflow.models import Variable
-from airflow.sdk import dag, task, Asset
+from airflow.sdk import task, Asset, dag
 
-from fdwh_config import VariableName, AssetName, DagName
+from fdwh_config import VariableName, AssetName, DagName, dag_default_args
 
 
-@dag(dag_display_name=DagName.CHECK_HELPER_SERVICES, schedule=timedelta(minutes=1))
+@dag(dag_id=DagName.CHECK_HELPER_SERVICES, max_active_runs=1, schedule=timedelta(minutes=1),
+     default_args=dag_default_args)
 def check_service_avail():
     @task(outlets=[Asset(AssetName.METADATA_HELPER_AVAIL)])
     def check_metadata_helper():
@@ -18,7 +19,7 @@ def check_service_avail():
     def check_ai_desc_helper():
         return check_host_avail(Variable.get(VariableName.AI_DESCR_ENDPOINT))
 
-    check_ai_desc_helper() >> check_metadata_helper()
+    [check_ai_desc_helper(), check_metadata_helper()]
 
 
 check_service_avail()

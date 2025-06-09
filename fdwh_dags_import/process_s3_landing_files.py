@@ -6,14 +6,13 @@ from datetime import datetime, UTC
 from io import BytesIO
 
 import requests
-import smbclient
-from airflow import DAG, Asset
 from airflow.models import Variable
 from airflow.operators.python import PythonOperator
 from airflow.operators.trigger_dagrun import TriggerDagRunOperator
 from airflow.providers.amazon.aws.hooks.s3 import S3Hook
 from airflow.providers.postgres.hooks.postgres import PostgresHook
 from airflow.providers.samba.hooks.samba import SambaHook
+from airflow.sdk import DAG, Asset
 from dataclasses_json import dataclass_json
 
 from fdwh_config import *
@@ -96,10 +95,11 @@ def import_from_s3(pg_hook: PostgresHook, s3_hook: S3Hook,
                 import_items.append(import_item)
                 if isinstance(import_item, GoodImportItem):
                     assert good_obj_bytes
-                    with smb_hook_storage.get_conn():
-                        with smbclient.open_file(import_item.storage_path, mode="wb") as remote_file:
-                            remote_file.write(good_obj_bytes.read())
-                move_s3_import_item(s3, import_item)
+                    print(f"ready to write file {import_item}")
+                    # with smb_hook_storage.get_conn():
+                    #     with smbclient.open_file(import_item.storage_path, mode="wb") as remote_file:
+                    # remote_file.write(good_obj_bytes.read())
+                # move_s3_import_item(s3, import_item)
 
     return import_items
 
@@ -273,7 +273,8 @@ def get_s3_object_bytes(s3, key: str, bucket: str) -> BytesIO:
     return BytesIO(data)
 
 
-with DAG(dag_id=DagName.PROCESS_SMB_LANDING_FILES, max_active_runs=1, schedule=SCHEDULE_MANUAL) as dag:
+with DAG(dag_id=DagName.PROCESS_S3_LANDING_FILES, max_active_runs=1,
+         schedule=[Asset(AssetName.METADATA_HELPER_AVAIL)], default_args=dag_default_args) as dag:
     process_each_landing_file = PythonOperator(
         task_id="import",
         python_callable=import_from_s3_callable,

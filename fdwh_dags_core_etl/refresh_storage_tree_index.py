@@ -2,7 +2,8 @@ from dataclasses import dataclass
 
 from airflow.models import Variable
 from airflow.providers.common.sql.operators.sql import SQLExecuteQueryOperator
-from airflow.sdk import TaskGroup, DAG, Asset
+from airflow.providers.standard.operators.empty import EmptyOperator
+from airflow.sdk import Asset, TaskGroup, DAG
 
 from fdwh_config import *
 from fdwh_operators.bulk_insert_operator import BulkInsertOperator
@@ -43,7 +44,8 @@ REFRESH_RAW_CONFS: list[RefreshRawConf] = [
     )
 ]
 
-with DAG(dag_id=DagName.REFRESH_STORAGE_TREE_INDEX, max_active_runs=1, schedule=SCHEDULE_DAILY):
+with DAG(dag_id=DagName.REFRESH_STORAGE_TREE_INDEX, max_active_runs=1, schedule=SCHEDULE_DAILY,
+         default_args=dag_default_args):
     with TaskGroup(group_id="refresh_raw") as refresh_raw:
         for rrc in REFRESH_RAW_CONFS:
             with TaskGroup(group_id=rrc.group_id):
@@ -65,55 +67,16 @@ with DAG(dag_id=DagName.REFRESH_STORAGE_TREE_INDEX, max_active_runs=1, schedule=
                 )
 
     with TaskGroup(group_id="refresh_tree") as refresh_tree:
-        refresh_raw >> SQLExecuteQueryOperator(task_id='tree_delete_old', conn_id=Conn.POSTGRES,
-                                               sql='sql/edm/edm_tree_delete_old.sql')
-        refresh_raw >> SQLExecuteQueryOperator(task_id='tree_insert_new', conn_id=Conn.POSTGRES,
-                                               sql='sql/edm/edm_tree_insert_new.sql')
+        SQLExecuteQueryOperator(
+            task_id='tree_delete_old',
+            conn_id=Conn.POSTGRES,
+            sql='sql/edm/edm_tree_delete_old.sql'
+        ) >> SQLExecuteQueryOperator(
+            task_id='tree_insert_new',
+            conn_id=Conn.POSTGRES,
+            sql='sql/edm/edm_tree_insert_new.sql'
+        )
 
-    refresh_raw >> refresh_tree
+    finish = EmptyOperator(task_id="finish", outlets=Asset(AssetName.STORAGE_TREE_UPDATED))
 
-    find_missing_metadata_archive = SQLExecuteQueryOperator(
-        task_id='find_missing_metadata_archive',
-        conn_id=Conn.POSTGRES,
-        sql='sql/edm/find_missing_metadata_archive.sql',
-        outlets=Asset(AssetName.MISSING_METADATA_ARCHIVE))
-
-    find_missing_metadata_archive_collection = SQLExecuteQueryOperator(
-        task_id='find_missing_metadata_collection',
-        conn_id=Conn.POSTGRES,
-        sql='sql/edm/find_missing_metadata_collection.sql',
-        outlets=Asset(AssetName.MISSING_METADATA_COLLECTION))
-
-    find_missing_metadata_trash = SQLExecuteQueryOperator(
-        task_id='find_missing_metadata_trash',
-        conn_id=Conn.POSTGRES,
-        sql='sql/edm/find_missing_metadata_trash.sql',
-        outlets=Asset(AssetName.MISSING_METADATA_TRASH))
-
-    find_missing_ai_descr_collection = SQLExecuteQueryOperator(
-        task_id='find_missing_ai_descr_collection',
-        conn_id=Conn.POSTGRES,
-        sql='sql/edm/find_missing_ai_descr_collection.sql',
-        outlets=Asset(AssetName.MISSING_AI_DESCR_COLLECTION))
-
-    refresh_tree >> [
-        find_missing_metadata_archive,
-        find_missing_metadata_archive_collection,
-        find_missing_metadata_trash,
-        find_missing_ai_descr_collection,
-    ]
-
-#
-# with TaskGroup(group_id='dm') as dm:
-#     SQLExecuteQueryOperator(
-#         task_id='insert_counts_row',
-#         conn_id=Conn.POSTGRES,
-#         sql='sql/dm/dm_counts_insert.sql'
-#     )
-#     SQLExecuteQueryOperator(
-#         task_id='insert_file_types_rows',
-#         conn_id=Conn.POSTGRES,
-#         sql='sql/dm/dm_file_types_insert.sql'
-#     )
-#
-# raw >> edm >> dm
+    refresh_raw >> refresh_tree >> finish

@@ -1,7 +1,7 @@
 from airflow.providers.common.sql.operators.sql import SQLExecuteQueryOperator
 from airflow.sdk import dag, Asset
 
-from fdwh_config import Conn, DagName, AssetName
+from fdwh_config import *
 
 
 @dag(dag_display_name=DagName.UPDATE_DATAMARTS, schedule=[
@@ -9,7 +9,7 @@ from fdwh_config import Conn, DagName, AssetName
     Asset(AssetName.ADD_METADATA_COLLECTION),
     Asset(AssetName.ADD_METADATA_TRASH),
     Asset(AssetName.ADD_AI_DESCR_COLLECTION)
-])
+], default_args=dag_default_args)
 def update_dm():
     SQLExecuteQueryOperator(
         task_id='dm_counts_insert',

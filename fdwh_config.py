@@ -1,13 +1,16 @@
 SCHEDULE_DAILY = '@daily'
 SCHEDULE_MANUAL = None
 
+dag_default_args = {
+    'retries': 1,
+}
 
 class Conn:
     _conn_prefix = 'fdwh_'
 
     POSTGRES = _conn_prefix + 'postgres'
 
-    MINIO = 'fdwhminio' # todo change to _conn_prefix + 'minio'
+    MINIO = 'fdwhminio'  # todo change to _conn_prefix + 'minio'
 
     SMB_ARCHIVE = _conn_prefix + "storage_smb_archive"
     SMB_COLLECTION = _conn_prefix + "storage_smb_collection"
@@ -18,17 +21,22 @@ class Conn:
 
 class DagName:
     _prefix = 'fdwh_'
-    CHECK_HELPER_SERVICES = _prefix + '_check_helper_services'
-    UPDATE_DATAMARTS = _prefix + 'update_datamarts'
+    CHECK_HELPER_SERVICES = _prefix + 'check_helper_services'
     FIND_COLLECTION_DUPLICATES = _prefix + 'find_collection_duplicates'
-    RM_COLLECTION_DUPLICATES = _prefix + 'rm_collection_duplicates'
+    FIND_MISSING_AI_DESCR = _prefix + 'find_missing_ai_descr'
+    FIND_MISSING_METADATA = _prefix + 'find_missing_metadata'
     IMPORT_FROM_LOCAL_MEM_CARD = _prefix + 'import_from_local_mem_card'
+    PROCESS_S3_LANDING_FILES = _prefix + 'process_s3_landing_files'
     PROCESS_SMB_LANDING_FILES = _prefix + 'process_smb_landing_files'
     REFRESH_STORAGE_TREE_INDEX = _prefix + 'refresh_storage_tree_index'
+    RM_COLLECTION_DUPLICATES = _prefix + 'rm_collection_duplicates'
+    UPDATE_DATAMARTS = _prefix + 'update_datamarts'
 
 
 class AssetName:
     IMPORT_RESULT = 'fdwh_import_result'
+
+    STORAGE_TREE_UPDATED = 'fdwh_storage_tree_updated'
 
     MISSING_METADATA_ARCHIVE = 'fdwh_missing_ma'
     MISSING_METADATA_COLLECTION = 'fdwh_missing_mc'

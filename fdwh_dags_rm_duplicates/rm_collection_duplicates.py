@@ -21,7 +21,8 @@ def delete_selected_collection_duplicates():
         pg_hook.run(sql=f'''delete from duplicates.collection_duplicates where "hash" = '{hash}';''')
 
 
-with DAG(dag_id=DagName.RM_COLLECTION_DUPLICATES, max_active_runs=1, schedule=SCHEDULE_MANUAL):
+with DAG(dag_id=DagName.RM_COLLECTION_DUPLICATES, max_active_runs=1, schedule=SCHEDULE_MANUAL,
+         default_args=dag_default_args):
     delete_selected_collection_duplicates = PythonOperator(
         task_id='delete_selected_collection_duplicates',
         python_callable=delete_selected_collection_duplicates)
