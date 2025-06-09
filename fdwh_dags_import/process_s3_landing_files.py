@@ -6,6 +6,7 @@ from datetime import datetime, UTC
 from io import BytesIO
 
 import requests
+import smbclient
 from airflow.models import Variable
 from airflow.operators.python import PythonOperator
 from airflow.operators.trigger_dagrun import TriggerDagRunOperator
@@ -14,12 +15,11 @@ from airflow.providers.postgres.hooks.postgres import PostgresHook
 from airflow.providers.samba.hooks.samba import SambaHook
 from airflow.sdk import DAG, Asset
 from dataclasses_json import dataclass_json
+from smbclient import shutil
 
 from fdwh_config import *
 
-Y_D_M_H_M_S = "%Y%d%m%H%M%S"
-
-TG_USER_IDS = list(map(int, Variable.get(VariableName.TG_USER_IDS).split(',')))
+Y_D_M_H_M = "%Y-%d-%m_%H%M"
 
 
 @contextmanager
@@ -43,9 +43,10 @@ class ImportItem:
 @dataclass_json
 @dataclass
 class GoodImportItem(ImportItem):
+    storage_dir: str
     storage_path: str
     status = "import"
-    parent_import_bucket_key: str | None = None  # for companion files
+    obj_bytes: BytesIO
 
 
 @dataclass_json
@@ -64,49 +65,41 @@ class UnrecognizedImportItem(ImportItem):
     status = "unrecognized"
 
 
-def import_from_s3_callable() -> list[ImportItem]:
-    result: list[ImportItem] = import_from_s3(
+def import_from_s3_callable():
+    import_from_s3(
         landing_bucket=Variable.get(VariableName.BUCKET_LANDING),
         unrecognized_bucket=Variable.get(VariableName.BUCKET_REJECTED_UNSUPPORTED),
         duplicates_bucket=Variable.get(VariableName.BUCKET_REJECTED_DUPLICATES),
         exif_ts_endpoint=Variable.get(VariableName.EXIF_TS_ENDPOINT),
         pg_hook=PostgresHook.get_hook(Conn.POSTGRES),
-        s3_hook=S3Hook(aws_conn_id='aws_default'),
+        s3_hook=S3Hook(aws_conn_id=Conn.MINIO),
         smb_hook_storage=SambaHook.get_hook(Conn.SMB_COLLECTION)
     )
-    return result
 
 
 def import_from_s3(pg_hook: PostgresHook, s3_hook: S3Hook,
                    landing_bucket: str, unrecognized_bucket: str, duplicates_bucket: str,
-                   exif_ts_endpoint: str, smb_hook_storage: SambaHook) -> list[ImportItem]:
+                   exif_ts_endpoint: str, smb_hook_storage: SambaHook):
     s3 = s3_hook.get_client_type('s3')
-    import_items: list[ImportItem] = []
     for page in s3.get_paginator('list_objects_v2').paginate(Bucket=landing_bucket):
         if 'Contents' in page:
             for obj in page['Contents']:
-                import_item, good_obj_bytes = create_import_item(
+                import_item = create_import_item(
                     s3,
                     pg_hook,
                     landing_bucket_key=obj['Key'],
                     landing_bucket=landing_bucket,
                     exif_ts_endpoint=exif_ts_endpoint,
-                    unrecognized_bucket=unrecognized_bucket)
-                import_items.append(import_item)
-                if isinstance(import_item, GoodImportItem):
-                    assert good_obj_bytes
-                    print(f"ready to write file {import_item}")
-                    # with smb_hook_storage.get_conn():
-                    #     with smbclient.open_file(import_item.storage_path, mode="wb") as remote_file:
-                    # remote_file.write(good_obj_bytes.read())
-                # move_s3_import_item(s3, import_item)
-
-    return import_items
+                    unrecognized_bucket=unrecognized_bucket,
+                    duplicate_bucket=duplicates_bucket,
+                )
+                print(f"ready to move import item: {import_item}")
+                move_s3_import_item(s3, smb_hook_storage, import_item)
 
 
 def create_import_item(s3, pg_hook: PostgresHook, exif_ts_endpoint: str,
                        landing_bucket_key: str,
-                       landing_bucket: str, unrecognized_bucket: str) -> (ImportItem, BytesIO | None):
+                       landing_bucket: str, unrecognized_bucket: str, duplicate_bucket: str) -> (ImportItem, BytesIO | None):
     proc_datetime = datetime.now(UTC)
 
     subfolder, preloaded_obj_bytes = get_subfolder(s3, landing_bucket_key, landing_bucket, exif_ts_endpoint)
@@ -116,7 +109,7 @@ def create_import_item(s3, pg_hook: PostgresHook, exif_ts_endpoint: str,
             proc_datetime=proc_datetime,
             landing_bucket_key=landing_bucket_key,
             landing_bucket=landing_bucket,
-            unrecognized_bucket_key="nosub_" + proc_datetime.strftime(Y_D_M_H_M_S) + landing_bucket_key,
+            unrecognized_bucket_key=proc_datetime.strftime(Y_D_M_H_M) + "/" + landing_bucket_key,
             unrecognized_bucket=unrecognized_bucket)
 
     is_duplicate, preloaded_obj_bytes = run_duplicate_check(
@@ -131,15 +124,21 @@ def create_import_item(s3, pg_hook: PostgresHook, exif_ts_endpoint: str,
             proc_datetime=proc_datetime,
             landing_bucket_key=landing_bucket_key,
             landing_bucket=landing_bucket,
-            duplicate_bucket_key="dup_" + proc_datetime.strftime(Y_D_M_H_M_S) + landing_bucket_key,
-            duplicate_bucket=unrecognized_bucket)
+            duplicate_bucket_key=proc_datetime.strftime(Y_D_M_H_M) + "/" + landing_bucket_key,
+            duplicate_bucket=duplicate_bucket)
 
     basename = landing_bucket_key.split("/")[-1]
+    if preloaded_obj_bytes:
+        obj_bytes = preloaded_obj_bytes
+    else:
+        obj_bytes = get_s3_object_bytes(s3, bucket=landing_bucket, key=landing_bucket_key)
     return GoodImportItem(
+        obj_bytes=obj_bytes,
         proc_datetime=proc_datetime,
         landing_bucket_key=landing_bucket_key,
         landing_bucket=landing_bucket,
-        storage_path=subfolder + "/" + basename
+        storage_path=subfolder + "/" + basename,
+        storage_dir=subfolder,
     )
 
 
@@ -153,18 +152,13 @@ def run_duplicate_check(s3, landing_bucket_key: str, landing_bucket: str,
 
 def get_md5_hash(s3, landing_bucket_key: str, landing_bucket: str,
                  preloaded_obj_bytes: BytesIO | None) -> (str, BytesIO):
-    tags = get_s3_object_tags(s3, key=landing_bucket_key, bucket=landing_bucket)
-    md5_hash = tags['md5_hash']
-    if md5_hash:
-        return md5_hash
+    if preloaded_obj_bytes:
+        obj_bytes = preloaded_obj_bytes
     else:
-        if preloaded_obj_bytes:
-            obj_bytes = preloaded_obj_bytes
-        else:
-            obj_bytes = get_s3_object_bytes(s3, landing_bucket_key, landing_bucket)
-        md5_hash = hashlib.file_digest(obj_bytes, "md5").hexdigest()
-        assert md5_hash
-        return md5_hash, obj_bytes
+        obj_bytes = get_s3_object_bytes(s3, landing_bucket_key, landing_bucket)
+    md5_hash = hashlib.file_digest(obj_bytes, "md5").hexdigest()
+    assert md5_hash
+    return md5_hash, obj_bytes
 
 
 def hash_already_used(md5_hash, pg_hook: PostgresHook) -> bool:
@@ -177,7 +171,7 @@ def hash_already_used(md5_hash, pg_hook: PostgresHook) -> bool:
     return len(records) > 0
 
 
-def move_s3_import_item(s3, import_item: ImportItem):
+def move_s3_import_item(s3, smb_hook_storage, import_item: ImportItem):
     if isinstance(import_item, UnrecognizedImportItem):
         copy_file(
             s3,
@@ -195,6 +189,9 @@ def move_s3_import_item(s3, import_item: ImportItem):
             dest_bucket=import_item.duplicate_bucket)
         s3.delete_object(Bucket=import_item.landing_bucket, Key=import_item.landing_bucket_key)
     if isinstance(import_item, GoodImportItem):
+        smb_hook_storage.makedirs(import_item.storage_dir, exist_ok=True)
+        with smb_hook_storage.open_file(import_item.storage_path, mode="wb") as g:
+            shutil.copyfileobj(import_item.obj_bytes, g)
         s3.delete_object(Bucket=import_item.landing_bucket, Key=import_item.landing_bucket_key)
 
 
@@ -213,15 +210,15 @@ def get_subfolder(s3, key: str, bucket: str, exif_ts_endpoint: str) -> (str | No
         if import_subfolder:
             return import_subfolder, obj_bytes
         else:
-            return None
+            return None, obj_bytes
 
 
 def get_subfolder_from_prefix(key: str) -> str | None:
-    split = key.split("/")[0]
-    if len(split) == 2:
-        s = split[0]
-        if validate_subfolder_fmt(s):
-            return s
+    s = key.split("/")
+    if len(s) > 0:
+        subfolder = s[0]
+        if validate_subfolder_fmt(subfolder):
+            return subfolder
 
 
 def validate_subfolder_fmt(s: str) -> bool:
@@ -259,12 +256,6 @@ def get_subfolder_from_exif(obj_bytes: BytesIO, exif_ts_endpoint) -> str | None:
     metadata = response.json()
     exif_timestamp = metadata['timestamp']
     return exif_timestamp
-
-
-def get_s3_object_tags(s3, key: str, bucket: str):
-    resp_tags = s3.get_object_tagging(Bucket=bucket, Key=key)
-    tag_set = resp_tags.get('TagSet', [])
-    return tag_set
 
 
 def get_s3_object_bytes(s3, key: str, bucket: str) -> BytesIO:

@@ -2,15 +2,15 @@ SCHEDULE_DAILY = '@daily'
 SCHEDULE_MANUAL = None
 
 dag_default_args = {
-    'retries': 1,
+    'retries': 0,
 }
 
 class Conn:
     _conn_prefix = 'fdwh_'
 
     POSTGRES = _conn_prefix + 'postgres'
+    MINIO = _conn_prefix + 'minio'
 
-    MINIO = 'fdwhminio'  # todo change to _conn_prefix + 'minio'
 
     SMB_ARCHIVE = _conn_prefix + "storage_smb_archive"
     SMB_COLLECTION = _conn_prefix + "storage_smb_collection"
@@ -25,9 +25,7 @@ class DagName:
     FIND_COLLECTION_DUPLICATES = _prefix + 'find_collection_duplicates'
     FIND_MISSING_AI_DESCR = _prefix + 'find_missing_ai_descr'
     FIND_MISSING_METADATA = _prefix + 'find_missing_metadata'
-    IMPORT_FROM_LOCAL_MEM_CARD = _prefix + 'import_from_local_mem_card'
     PROCESS_S3_LANDING_FILES = _prefix + 'process_s3_landing_files'
-    PROCESS_SMB_LANDING_FILES = _prefix + 'process_smb_landing_files'
     REFRESH_STORAGE_TREE_INDEX = _prefix + 'refresh_storage_tree_index'
     RM_COLLECTION_DUPLICATES = _prefix + 'rm_collection_duplicates'
     UPDATE_DATAMARTS = _prefix + 'update_datamarts'
@@ -67,9 +65,6 @@ class VariableName:
     RP_ARCHIVE = _var_prefix + 'RP_ARCHIVE'
     RP_COLLECTION = _var_prefix + 'RP_COLLECTION'
     RP_TRASH = _var_prefix + 'RP_TRASH'
-
-    TG_TOKEN = _var_prefix + 'TG_BOT_TOKEN'
-    TG_USER_IDS = _var_prefix + 'TG_USER_IDS'
 
     AI_DESCR_ENDPOINT = _var_prefix + 'AI_DESCR_ENDPOINT'
     METADATA_ENDPOINT = _var_prefix + 'METADATA_ENDPOINT'
