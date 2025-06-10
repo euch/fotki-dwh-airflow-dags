@@ -24,7 +24,8 @@ class DagName:
     FIND_COLLECTION_DUPLICATES = _prefix + 'find_collection_duplicates'
     FIND_MISSING_AI_DESCR = _prefix + 'find_missing_ai_descr'
     FIND_MISSING_METADATA = _prefix + 'find_missing_metadata'
-    IMPORT_LANDING_FILES = _prefix + 'import_landing_files'
+    IMPORT_LANDING_FILES_S3 = _prefix + 'import_landing_files_s3'
+    IMPORT_LANDING_FILES_SMB = _prefix + 'import_landing_files_smb'
     REFRESH_RAW_TREES = _prefix + 'refresh_raw_trees'
     REFRESH_EDM_TREE = _prefix + 'refresh_edm_tree'
     RM_COLLECTION_DUPLICATES = _prefix + 'rm_collection_duplicates'
@@ -72,3 +73,6 @@ class VariableName:
     AI_DESCR_ENDPOINT = _var_prefix + 'AI_DESCR_ENDPOINT'
     METADATA_ENDPOINT = _var_prefix + 'METADATA_ENDPOINT'
     EXIF_TS_ENDPOINT = _var_prefix + 'EXIF_TS_ENDPOINT'
+
+    LP_LANDING = _var_prefix + 'LP_LANDING'
+    LP_REJECTED = _var_prefix + 'LP_REJECTED'

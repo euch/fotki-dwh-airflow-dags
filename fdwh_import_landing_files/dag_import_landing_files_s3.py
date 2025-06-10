@@ -256,7 +256,7 @@ def get_s3_object_bytes(s3, key: str, bucket: str) -> BytesIO:
 
 
 @dag(
-    dag_id=DagName.IMPORT_LANDING_FILES,
+    dag_id=DagName.IMPORT_LANDING_FILES_S3,
     max_active_runs=1,
     default_args=dag_default_args,
     schedule=(Asset(AssetName.EXIF_TS_HELPER_AVAIL)),
