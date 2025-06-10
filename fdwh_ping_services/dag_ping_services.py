@@ -14,7 +14,7 @@ default_args = {
 }
 
 
-@asset(name=AssetName.METADATA_HELPER_AVAIL, schedule=[Asset(AssetName.EDM_TREE_UPDATED)])
+@asset(name=AssetName.METADATA_HELPER_AVAIL, schedule=timedelta(minutes=10))
 def check_metadata() -> bool:
     return check_host_avail(Variable.get(VariableName.METADATA_ENDPOINT))
 
@@ -24,7 +24,7 @@ def check_exif_ts() -> bool:
     return check_host_avail(Variable.get(VariableName.EXIF_TS_ENDPOINT))
 
 
-@asset(name=AssetName.AI_DESCR_HELPER_AVAIL, schedule=[Asset(AssetName.EDM_TREE_UPDATED)])
+@asset(name=AssetName.AI_DESCR_HELPER_AVAIL, schedule=timedelta(minutes=10))
 def check_ai_desc() -> bool:
     return check_host_avail(Variable.get(VariableName.AI_DESCR_ENDPOINT))
 

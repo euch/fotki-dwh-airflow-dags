@@ -3,10 +3,10 @@ from airflow.sdk import dag, Asset
 
 from fdwh_config import *
 
-ma = Asset(AssetName.ADD_METADATA_ARCHIVE)
-mc = Asset(AssetName.ADD_METADATA_COLLECTION)
-mt = Asset(AssetName.ADD_METADATA_TRASH)
-aidc = Asset(AssetName.ADD_AI_DESCR_COLLECTION)
+ma = Asset(AssetName.METADATA_UPDATED_ARCHIVE)
+mc = Asset(AssetName.METADATA_UPDATED_COLLECTION)
+mt = Asset(AssetName.METADATA_UPDATED_TRASH)
+aidc = Asset(AssetName.AI_DESCR_UPDATED_COLLECTION)
 
 
 @dag(dag_display_name=DagName.UPDATE_DATAMARTS,

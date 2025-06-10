@@ -11,7 +11,6 @@ class Conn:
     POSTGRES = _conn_prefix + 'postgres'
     MINIO = _conn_prefix + 'minio'
 
-
     SMB_ARCHIVE = _conn_prefix + "storage_smb_archive"
     SMB_COLLECTION = _conn_prefix + "storage_smb_collection"
     SMB_TRASH = _conn_prefix + "storage_smb_trash"
@@ -34,25 +33,18 @@ class DagName:
 
 class AssetName:
     NEW_FILES_IMPORTED = 'fdwh_as_new_files_imported'
-
-    RAW_TREES_UPDATE_TICK = 'fdwh_as_raw_trees_update_tick'
     RAW_TREES_UPDATED = 'fdwh_as_raw_trees_updated'
     EDM_TREE_UPDATED = 'fdwh_as_edm_tree_updated'
-
-    MISSING_METADATA_ARCHIVE = 'fdwh_missing_ma'
-    MISSING_METADATA_COLLECTION = 'fdwh_missing_mc'
-    MISSING_METADATA_TRASH = 'fdwh_missing_mt'
-    MISSING_AI_DESCR_COLLECTION = 'fdwh_missing_aidc'
 
     METADATA_HELPER_AVAIL = 'fdwh_metadata_helper_avail'
     EXIF_TS_HELPER_AVAIL = 'fdwh_exif_ts_helper_avail'
     AI_DESCR_HELPER_AVAIL = 'fdwh_ai_descr_helper_avail'
 
-    ADD_METADATA_ARCHIVE = 'fdwh_add_ma'
-    ADD_METADATA_COLLECTION = 'fdwh_add_mc'
-    ADD_METADATA_TRASH = 'fdwh_add_mt'
-    ADD_AI_DESCR_COLLECTION = 'fdwh_add_aidc'
+    METADATA_UPDATED_ARCHIVE = 'fdwh_metadata_updated_archive'
+    METADATA_UPDATED_COLLECTION = 'fdwh_metadata_updated_collection'
+    METADATA_UPDATED_TRASH = 'fdwh_metadata_updated_trash'
 
+    AI_DESCR_UPDATED_COLLECTION = 'fdwh_ai_descr_updated_collection'
 
 class ImportSettings:
     COMPANION_FILE_EXTENSIONS = ['.mov', '.MOV', '.mp4', '.MP4', ]
