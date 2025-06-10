@@ -21,7 +21,6 @@ class Conn:
 
 class DagName:
     _prefix = 'fdwh_'
-    CHECK_HELPER_SERVICES = _prefix + 'check_helper_services'
     FIND_COLLECTION_DUPLICATES = _prefix + 'find_collection_duplicates'
     FIND_MISSING_AI_DESCR = _prefix + 'find_missing_ai_descr'
     FIND_MISSING_METADATA = _prefix + 'find_missing_metadata'
