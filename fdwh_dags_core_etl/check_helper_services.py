@@ -29,11 +29,8 @@ def check_host_avail(url: str):
     parsed_url = urlparse(url)
     host = parsed_url.hostname
     port = parsed_url.port if parsed_url.port else (80 if parsed_url.scheme == 'http' else 443)
-    try:
-        with socket.create_connection((host, port), timeout=60):
-            return True
-    except (socket.timeout, socket.error):
-        return False
+    with socket.create_connection((host, port), timeout=60):
+        return True
 
 
 # Using the special variable
