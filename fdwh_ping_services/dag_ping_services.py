@@ -3,7 +3,7 @@ from datetime import timedelta
 from urllib.parse import urlparse
 
 from airflow.models import Variable
-from airflow.sdk import asset
+from airflow.sdk import asset, Asset
 
 from fdwh_config import VariableName, AssetName
 
@@ -14,13 +14,18 @@ default_args = {
 }
 
 
-@asset(name=AssetName.METADATA_HELPER_AVAIL, schedule=timedelta(minutes=10))
-def check_service_avail() -> bool:
+@asset(name=AssetName.METADATA_HELPER_AVAIL, schedule=[Asset(AssetName.EDM_TREE_UPDATED)])
+def check_metadata() -> bool:
     return check_host_avail(Variable.get(VariableName.METADATA_ENDPOINT))
 
 
-@asset(name=AssetName.AI_DESCR_HELPER_AVAIL, schedule=timedelta(minutes=10))
-def check_ai_desc_helper() -> bool:
+@asset(name=AssetName.EXIF_TS_HELPER_AVAIL, schedule=timedelta(minutes=10))
+def check_exif_ts() -> bool:
+    return check_host_avail(Variable.get(VariableName.EXIF_TS_ENDPOINT))
+
+
+@asset(name=AssetName.AI_DESCR_HELPER_AVAIL, schedule=[Asset(AssetName.EDM_TREE_UPDATED)])
+def check_ai_desc() -> bool:
     return check_host_avail(Variable.get(VariableName.AI_DESCR_ENDPOINT))
 
 

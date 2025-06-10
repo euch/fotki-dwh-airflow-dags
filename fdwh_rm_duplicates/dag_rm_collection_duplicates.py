@@ -1,7 +1,6 @@
 from airflow import DAG
 from airflow.models import Variable
 from airflow.operators.python import PythonOperator
-from airflow.operators.trigger_dagrun import TriggerDagRunOperator
 from airflow.providers.postgres.hooks.postgres import PostgresHook
 from airflow.providers.samba.hooks.samba import SambaHook
 
@@ -23,11 +22,6 @@ def delete_selected_collection_duplicates():
 
 with DAG(dag_id=DagName.RM_COLLECTION_DUPLICATES, max_active_runs=1, schedule=SCHEDULE_MANUAL,
          default_args=dag_default_args):
-    delete_selected_collection_duplicates = PythonOperator(
+    PythonOperator(
         task_id='delete_selected_collection_duplicates',
         python_callable=delete_selected_collection_duplicates)
-    trigger_dwh_refresh = TriggerDagRunOperator(
-        task_id="trigger_" + DagName.REFRESH_STORAGE_TREE_INDEX,
-        trigger_dag_id=DagName.REFRESH_STORAGE_TREE_INDEX,
-        wait_for_completion=False),
-    delete_selected_collection_duplicates >> trigger_dwh_refresh

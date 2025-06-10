@@ -1,6 +1,6 @@
 import unittest
 
-from fdwh_dags_import.process_s3_landing_files import validate_subfolder_fmt, get_subfolder_from_prefix
+from fdwh_sort_landing_files.dag_sort_landing_files import validate_subfolder_fmt, get_subfolder_from_prefix
 
 
 class TestSubfolderMethods(unittest.TestCase):

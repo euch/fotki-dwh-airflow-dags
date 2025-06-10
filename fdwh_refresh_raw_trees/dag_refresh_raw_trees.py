@@ -1,14 +1,15 @@
 from dataclasses import dataclass
 
 from airflow.models import Variable
-from airflow.providers.common.sql.operators.sql import SQLExecuteQueryOperator
 from airflow.providers.standard.operators.empty import EmptyOperator
 from airflow.sdk import Asset, TaskGroup, DAG
+from airflow.timetables.assets import AssetOrTimeSchedule
+from airflow.timetables.trigger import CronTriggerTimetable
 
 from fdwh_config import *
-from fdwh_operators.bulk_insert_operator import BulkInsertOperator
-from fdwh_operators.create_remote_tree_csv_operator import CreateRemoteTreeCsvOperator
-from fdwh_operators.smb_download_operator import SmbDownloadOperator
+from fdwh_refresh_raw_trees.op_bulk_insert import BulkInsertOperator
+from fdwh_refresh_raw_trees.op_create_remote_tree_csv import CreateRemoteTreeCsvOperator
+from fdwh_refresh_raw_trees.op_smb_download import SmbDownloadOperator
 
 
 @dataclass
@@ -44,8 +45,14 @@ REFRESH_RAW_CONFS: list[RefreshRawConf] = [
     )
 ]
 
-with DAG(dag_id=DagName.REFRESH_STORAGE_TREE_INDEX, max_active_runs=1, schedule=SCHEDULE_DAILY,
-         default_args=dag_default_args):
+with DAG(
+        dag_id=DagName.REFRESH_RAW_TREES,
+        max_active_runs=1,
+        default_args=dag_default_args,
+        schedule=AssetOrTimeSchedule(
+            timetable=CronTriggerTimetable("0 4 * * *", timezone="UTC"),
+            assets=(Asset(AssetName.NEW_FILES_IMPORTED))),
+) as dag:
     with TaskGroup(group_id="refresh_raw") as refresh_raw:
         for rrc in REFRESH_RAW_CONFS:
             with TaskGroup(group_id=rrc.group_id):
@@ -66,17 +73,4 @@ with DAG(dag_id=DagName.REFRESH_STORAGE_TREE_INDEX, max_active_runs=1, schedule=
                     table_name=rrc.pg_tree_table
                 )
 
-    with TaskGroup(group_id="refresh_tree") as refresh_tree:
-        SQLExecuteQueryOperator(
-            task_id='tree_delete_old',
-            conn_id=Conn.POSTGRES,
-            sql='sql/edm/edm_tree_delete_old.sql'
-        ) >> SQLExecuteQueryOperator(
-            task_id='tree_insert_new',
-            conn_id=Conn.POSTGRES,
-            sql='sql/edm/edm_tree_insert_new.sql'
-        )
-
-    finish = EmptyOperator(task_id="finish", outlets=Asset(AssetName.STORAGE_TREE_UPDATED))
-
-    refresh_raw >> refresh_tree >> finish
+refresh_raw >> EmptyOperator(task_id="finish", outlets=Asset(AssetName.RAW_TREES_UPDATED))

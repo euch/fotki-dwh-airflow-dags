@@ -24,16 +24,19 @@ class DagName:
     FIND_COLLECTION_DUPLICATES = _prefix + 'find_collection_duplicates'
     FIND_MISSING_AI_DESCR = _prefix + 'find_missing_ai_descr'
     FIND_MISSING_METADATA = _prefix + 'find_missing_metadata'
-    PROCESS_S3_LANDING_FILES = _prefix + 'process_s3_landing_files'
-    REFRESH_STORAGE_TREE_INDEX = _prefix + 'refresh_storage_tree_index'
+    IMPORT_LANDING_FILES = _prefix + 'import_landing_files'
+    REFRESH_RAW_TREES = _prefix + 'refresh_raw_trees'
+    REFRESH_EDM_TREE = _prefix + 'refresh_edm_tree'
     RM_COLLECTION_DUPLICATES = _prefix + 'rm_collection_duplicates'
     UPDATE_DATAMARTS = _prefix + 'update_datamarts'
 
 
 class AssetName:
-    IMPORT_RESULT = 'fdwh_import_result'
+    NEW_FILES_IMPORTED = 'fdwh_as_new_files_imported'
 
-    STORAGE_TREE_UPDATED = 'fdwh_storage_tree_updated'
+    RAW_TREES_UPDATE_TICK = 'fdwh_as_raw_trees_update_tick'
+    RAW_TREES_UPDATED = 'fdwh_as_raw_trees_updated'
+    EDM_TREE_UPDATED = 'fdwh_as_edm_tree_updated'
 
     MISSING_METADATA_ARCHIVE = 'fdwh_missing_ma'
     MISSING_METADATA_COLLECTION = 'fdwh_missing_mc'
@@ -41,6 +44,7 @@ class AssetName:
     MISSING_AI_DESCR_COLLECTION = 'fdwh_missing_aidc'
 
     METADATA_HELPER_AVAIL = 'fdwh_metadata_helper_avail'
+    EXIF_TS_HELPER_AVAIL = 'fdwh_exif_ts_helper_avail'
     AI_DESCR_HELPER_AVAIL = 'fdwh_ai_descr_helper_avail'
 
     ADD_METADATA_ARCHIVE = 'fdwh_add_ma'

@@ -18,8 +18,7 @@ from fdwh_config import Conn, VariableName, AssetName
     Asset(AssetName.METADATA_HELPER_AVAIL),
     Asset(AssetName.MISSING_METADATA_ARCHIVE)
 ])
-def add_metadata_archive(context: dict, fdwh_metadata_helper_avail: Asset,
-                         fdwh_missing_ma: Asset) -> None:
+def add_metadata_archive(context: dict, fdwh_metadata_helper_avail: Asset, fdwh_missing_ma: Asset) -> None:
     avail: bool = context["inlet_events"][fdwh_metadata_helper_avail][-1].source_task_instance.xcom_pull()
     if avail:
         items = context["inlet_events"][fdwh_missing_ma][-1].source_task_instance.xcom_pull()
@@ -31,8 +30,7 @@ def add_metadata_archive(context: dict, fdwh_metadata_helper_avail: Asset,
     Asset(AssetName.METADATA_HELPER_AVAIL),
     Asset(AssetName.MISSING_METADATA_COLLECTION)
 ])
-def add_metadata_collection(context: dict, fdwh_metadata_helper_avail: Asset,
-                            fdwh_missing_mc: Asset) -> None:
+def add_metadata_collection(context: dict, fdwh_metadata_helper_avail: Asset, fdwh_missing_mc: Asset) -> None:
     avail: bool = context["inlet_events"][fdwh_metadata_helper_avail][-1].source_task_instance.xcom_pull()
     if avail:
         items = context["inlet_events"][fdwh_missing_mc][-1].source_task_instance.xcom_pull()
@@ -44,8 +42,7 @@ def add_metadata_collection(context: dict, fdwh_metadata_helper_avail: Asset,
     Asset(AssetName.METADATA_HELPER_AVAIL),
     Asset(AssetName.MISSING_METADATA_TRASH)
 ])
-def add_metadata_trash(context: dict, fdwh_metadata_helper_avail: Asset,
-                       fdwh_missing_mt: Asset) -> None:
+def add_metadata_trash(context: dict, fdwh_metadata_helper_avail: Asset, fdwh_missing_mt: Asset) -> None:
     avail: bool = context["inlet_events"][fdwh_metadata_helper_avail][-1].source_task_instance.xcom_pull()
     if avail:
         items = context["inlet_events"][fdwh_missing_mt][-1].source_task_instance.xcom_pull()

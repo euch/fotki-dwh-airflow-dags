@@ -10,12 +10,8 @@ with DAG(dag_id=DagName.FIND_COLLECTION_DUPLICATES, max_active_runs=1, schedule=
         task_id='dm_collection_duplicates_truncate',
         conn_id=Conn.POSTGRES,
         sql='truncate table duplicates.collection_duplicates;')
-    trigger_dwh_refresh = TriggerDagRunOperator(
-        task_id="trigger_" + DagName.REFRESH_STORAGE_TREE_INDEX,
-        trigger_dag_id=DagName.REFRESH_STORAGE_TREE_INDEX,
-        wait_for_completion=True),
     dm_collection_duplicates_insert = SQLExecuteQueryOperator(
         task_id='dm_collection_duplicates_insert',
         conn_id=Conn.POSTGRES,
         sql='sql/dm_collection_duplicates_insert.sql')
-    dm_collection_duplicates_truncate >> trigger_dwh_refresh >> dm_collection_duplicates_insert
+    dm_collection_duplicates_truncate >> dm_collection_duplicates_insert

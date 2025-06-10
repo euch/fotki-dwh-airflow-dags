@@ -6,14 +6,11 @@ from datetime import datetime, UTC
 from io import BytesIO
 
 import requests
-import smbclient
 from airflow.models import Variable
-from airflow.operators.python import PythonOperator
-from airflow.operators.trigger_dagrun import TriggerDagRunOperator
 from airflow.providers.amazon.aws.hooks.s3 import S3Hook
 from airflow.providers.postgres.hooks.postgres import PostgresHook
 from airflow.providers.samba.hooks.samba import SambaHook
-from airflow.sdk import DAG, Asset
+from airflow.sdk import Asset, DAG, task, dag
 from dataclasses_json import dataclass_json
 from smbclient import shutil
 
@@ -65,22 +62,11 @@ class UnrecognizedImportItem(ImportItem):
     status = "unrecognized"
 
 
-def import_from_s3_callable():
-    import_from_s3(
-        landing_bucket=Variable.get(VariableName.BUCKET_LANDING),
-        unrecognized_bucket=Variable.get(VariableName.BUCKET_REJECTED_UNSUPPORTED),
-        duplicates_bucket=Variable.get(VariableName.BUCKET_REJECTED_DUPLICATES),
-        exif_ts_endpoint=Variable.get(VariableName.EXIF_TS_ENDPOINT),
-        pg_hook=PostgresHook.get_hook(Conn.POSTGRES),
-        s3_hook=S3Hook(aws_conn_id=Conn.MINIO),
-        smb_hook_storage=SambaHook.get_hook(Conn.SMB_COLLECTION)
-    )
-
-
 def import_from_s3(pg_hook: PostgresHook, s3_hook: S3Hook,
                    landing_bucket: str, unrecognized_bucket: str, duplicates_bucket: str,
-                   exif_ts_endpoint: str, smb_hook_storage: SambaHook):
+                   exif_ts_endpoint: str, smb_hook_storage: SambaHook) -> list[str]:
     s3 = s3_hook.get_client_type('s3')
+    imported_storage_paths: list[str] = []
     for page in s3.get_paginator('list_objects_v2').paginate(Bucket=landing_bucket):
         if 'Contents' in page:
             for obj in page['Contents']:
@@ -95,11 +81,16 @@ def import_from_s3(pg_hook: PostgresHook, s3_hook: S3Hook,
                 )
                 print(f"ready to move import item: {import_item}")
                 move_s3_import_item(s3, smb_hook_storage, import_item)
+                if isinstance(import_item, GoodImportItem):
+                    imported_storage_paths.append(import_item.storage_path)
+
+    return imported_storage_paths
 
 
 def create_import_item(s3, pg_hook: PostgresHook, exif_ts_endpoint: str,
                        landing_bucket_key: str,
-                       landing_bucket: str, unrecognized_bucket: str, duplicate_bucket: str) -> (ImportItem, BytesIO | None):
+                       landing_bucket: str, unrecognized_bucket: str, duplicate_bucket: str) -> (
+        ImportItem, BytesIO | None):
     proc_datetime = datetime.now(UTC)
 
     subfolder, preloaded_obj_bytes = get_subfolder(s3, landing_bucket_key, landing_bucket, exif_ts_endpoint)
@@ -264,13 +255,46 @@ def get_s3_object_bytes(s3, key: str, bucket: str) -> BytesIO:
     return BytesIO(data)
 
 
-with DAG(dag_id=DagName.PROCESS_S3_LANDING_FILES, max_active_runs=1,
-         schedule=[Asset(AssetName.METADATA_HELPER_AVAIL)], default_args=dag_default_args) as dag:
-    process_each_landing_file = PythonOperator(
-        task_id="import",
-        python_callable=import_from_s3_callable,
-        outlets=Asset(AssetName.IMPORT_RESULT)
-    ) >> TriggerDagRunOperator(
-        task_id="trigger_" + DagName.REFRESH_STORAGE_TREE_INDEX,
-        trigger_dag_id=DagName.REFRESH_STORAGE_TREE_INDEX,
-        wait_for_completion=False)
+@dag(
+    dag_id=DagName.IMPORT_LANDING_FILES,
+    max_active_runs=1,
+    default_args=dag_default_args,
+    schedule=(Asset(AssetName.EXIF_TS_HELPER_AVAIL)),
+)
+def dag():
+    @task
+    def import_landing_files() -> list[str]:
+        return import_from_s3(
+            landing_bucket=Variable.get(VariableName.BUCKET_LANDING),
+            unrecognized_bucket=Variable.get(VariableName.BUCKET_REJECTED_UNSUPPORTED),
+            duplicates_bucket=Variable.get(VariableName.BUCKET_REJECTED_DUPLICATES),
+            exif_ts_endpoint=Variable.get(VariableName.EXIF_TS_ENDPOINT),
+            pg_hook=PostgresHook.get_hook(Conn.POSTGRES),
+            s3_hook=S3Hook(aws_conn_id=Conn.MINIO),
+            smb_hook_storage=SambaHook.get_hook(Conn.SMB_COLLECTION),
+        )
+
+
+    @task.branch
+    def choose_branch(import_landing_files: list[str]):
+        if len(import_landing_files) > 0:
+            return ['new_files_imported']
+        else:
+            return ['none_imported']
+
+    @task(outlets=[Asset(AssetName.NEW_FILES_IMPORTED)])
+    def new_files_imported(imported_storage_paths) -> list[str]:
+        return imported_storage_paths
+
+
+    @task
+    def none_imported():
+        pass
+
+    imported_storage_paths = import_landing_files()
+    choose_branch(imported_storage_paths) >> [
+        new_files_imported(imported_storage_paths),
+        none_imported()]
+
+dag()
+

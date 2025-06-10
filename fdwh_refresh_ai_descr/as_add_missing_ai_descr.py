@@ -9,10 +9,11 @@ from airflow.sdk import asset, Asset
 from fdwh_config import Conn, VariableName, AssetName
 
 
-@asset(name=AssetName.ADD_AI_DESCR_COLLECTION, schedule=[
-    Asset(AssetName.AI_DESCR_HELPER_AVAIL),
-    Asset(AssetName.MISSING_AI_DESCR_COLLECTION)
-])
+@asset(name=AssetName.ADD_AI_DESCR_COLLECTION,
+       schedule=[
+           Asset(AssetName.AI_DESCR_HELPER_AVAIL),
+           Asset(AssetName.MISSING_AI_DESCR_COLLECTION)
+       ])
 def add_missing_ai_descr_collection(context: dict, fdwh_ai_descr_helper_avail: Asset,
                                     fdwh_missing_aidc: Asset) -> None:
     avail: bool = context["inlet_events"][fdwh_ai_descr_helper_avail][-1].source_task_instance.xcom_pull()
