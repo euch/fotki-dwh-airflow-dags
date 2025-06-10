@@ -26,7 +26,7 @@ def add_missing_ai_descr():
 
     @task(outlets=[Asset(AssetName.AI_DESCR_UPDATED_COLLECTION)])
     def add_missing_ai_descr_collection(**context) -> None:
-        missing_items = context["ti"].xcom_pull(task_ids="find_missing_metadata_archive", key="return_value")
+        missing_items = context["ti"].xcom_pull(task_ids="find_missing_ai_descr_collection", key="return_value")
         if len(missing_items) > 0:
             pg_hook = PostgresHook.get_hook(Conn.POSTGRES)
             for item in missing_items:
