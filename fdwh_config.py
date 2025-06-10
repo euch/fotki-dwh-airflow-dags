@@ -5,6 +5,7 @@ dag_default_args = {
     'retries': 0,
 }
 
+
 class Conn:
     _conn_prefix = 'fdwh_'
 
@@ -45,6 +46,7 @@ class AssetName:
     METADATA_UPDATED_TRASH = 'fdwh_metadata_updated_trash'
 
     AI_DESCR_UPDATED_COLLECTION = 'fdwh_ai_descr_updated_collection'
+
 
 class ImportSettings:
     COMPANION_FILE_EXTENSIONS = ['.mov', '.MOV', '.mp4', '.MP4', ]

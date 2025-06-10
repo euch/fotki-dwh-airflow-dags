@@ -5,11 +5,10 @@ from datetime import datetime
 
 import psycopg2 as psql
 import requests
-from airflow.models import Variable
 from airflow.providers.common.sql.operators.sql import SQLExecuteQueryOperator
 from airflow.providers.postgres.hooks.postgres import PostgresHook
 from airflow.providers.samba.hooks.samba import SambaHook
-from airflow.sdk import Asset, dag, task
+from airflow.sdk import Asset, dag, task, Variable
 from smbprotocol.exceptions import SMBOSError
 
 from fdwh_config import Conn, VariableName, AssetName, dag_default_args

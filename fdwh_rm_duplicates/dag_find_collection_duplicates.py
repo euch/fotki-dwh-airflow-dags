@@ -1,6 +1,5 @@
-from airflow import DAG
-from airflow.operators.trigger_dagrun import TriggerDagRunOperator
 from airflow.providers.common.sql.operators.sql import SQLExecuteQueryOperator
+from airflow.sdk import DAG
 
 from fdwh_config import *
 

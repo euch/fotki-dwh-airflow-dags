@@ -2,12 +2,11 @@ import io
 from datetime import datetime
 
 import requests
-from airflow.models import Variable
 from airflow.providers.common.sql.operators.sql import SQLExecuteQueryOperator
 from airflow.providers.postgres.hooks.postgres import PostgresHook
-from airflow.sdk import Asset, dag, task
+from airflow.sdk import Asset, Variable, dag, task
 
-from fdwh_config import Conn, VariableName, AssetName, dag_default_args
+from fdwh_config import *
 
 
 @dag(max_active_runs=1,
@@ -53,5 +52,6 @@ def add_missing_ai_descr():
                         print(f"Failed to parse preview bytes. abs_filename = " + abs_filename)
 
     find_missing_ai_descr_collection >> add_missing_ai_descr_collection()
+
 
 add_missing_ai_descr()

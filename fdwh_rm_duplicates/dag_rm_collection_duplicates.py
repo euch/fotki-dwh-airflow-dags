@@ -1,8 +1,7 @@
-from airflow import DAG
-from airflow.models import Variable
 from airflow.operators.python import PythonOperator
 from airflow.providers.postgres.hooks.postgres import PostgresHook
 from airflow.providers.samba.hooks.samba import SambaHook
+from airflow.sdk import Variable, DAG
 
 from fdwh_config import *
 

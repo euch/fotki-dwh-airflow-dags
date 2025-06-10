@@ -2,8 +2,7 @@ import socket
 from datetime import timedelta
 from urllib.parse import urlparse
 
-from airflow.models import Variable
-from airflow.sdk import asset, Asset
+from airflow.sdk import asset, Variable
 
 from fdwh_config import VariableName, AssetName
 

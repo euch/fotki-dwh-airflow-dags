@@ -7,10 +7,9 @@ from contextlib import contextmanager
 from dataclasses import dataclass
 
 import requests
-from airflow.models import Variable
 from airflow.providers.postgres.hooks.postgres import PostgresHook
 from airflow.providers.samba.hooks.samba import SambaHook
-from airflow.sdk import task, dag, Asset
+from airflow.sdk import task, dag, Asset, Variable
 from dataclasses_json import dataclass_json
 
 from fdwh_config import *

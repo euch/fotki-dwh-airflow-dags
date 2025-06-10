@@ -6,11 +6,10 @@ from datetime import datetime, UTC
 from io import BytesIO
 
 import requests
-from airflow.models import Variable
 from airflow.providers.amazon.aws.hooks.s3 import S3Hook
 from airflow.providers.postgres.hooks.postgres import PostgresHook
 from airflow.providers.samba.hooks.samba import SambaHook
-from airflow.sdk import Asset, DAG, task, dag
+from airflow.sdk import Asset, task, dag, Variable
 from dataclasses_json import dataclass_json
 from smbclient import shutil
 
@@ -274,7 +273,6 @@ def dag():
             smb_hook_storage=SambaHook.get_hook(Conn.SMB_COLLECTION),
         )
 
-
     @task.branch
     def choose_branch(import_landing_files: list[str]):
         if len(import_landing_files) > 0:
@@ -286,7 +284,6 @@ def dag():
     def new_files_imported(imported_storage_paths) -> list[str]:
         return imported_storage_paths
 
-
     @task
     def none_imported():
         pass
@@ -296,5 +293,5 @@ def dag():
         new_files_imported(imported_storage_paths),
         none_imported()]
 
-dag()
 
+dag()

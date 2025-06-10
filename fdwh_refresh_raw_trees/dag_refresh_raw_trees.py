@@ -1,8 +1,7 @@
 from dataclasses import dataclass
 
-from airflow.models import Variable
 from airflow.providers.standard.operators.empty import EmptyOperator
-from airflow.sdk import Asset, TaskGroup, DAG
+from airflow.sdk import Asset, TaskGroup, DAG, Variable
 from airflow.timetables.assets import AssetOrTimeSchedule
 from airflow.timetables.trigger import CronTriggerTimetable
 
