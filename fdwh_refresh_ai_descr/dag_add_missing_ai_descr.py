@@ -13,7 +13,7 @@ from fdwh_config import *
      default_args=dag_default_args,
      schedule=[
          Asset(AssetName.AI_DESCR_HELPER_AVAIL),
-         Asset(AssetName.EDM_TREE_UPDATED)
+         Asset(AssetName.METADATA_UPDATED_COLLECTION)
      ],
      )
 def add_missing_ai_descr():
