@@ -49,7 +49,7 @@ with DAG(
         max_active_runs=1,
         default_args=dag_default_args,
         schedule=AssetOrTimeSchedule(
-            timetable=CronTriggerTimetable("0 4 * * *", timezone="UTC"),
+            timetable=CronTriggerTimetable("0 0,6,12,18 * * *", timezone="UTC"),
             assets=(Asset(AssetName.NEW_FILES_IMPORTED))),
 ) as dag:
     with TaskGroup(group_id="refresh_raw") as refresh_raw:
