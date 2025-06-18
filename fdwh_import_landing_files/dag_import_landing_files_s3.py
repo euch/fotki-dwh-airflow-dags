@@ -7,6 +7,7 @@ from io import BytesIO
 
 import requests
 from airflow.providers.amazon.aws.hooks.s3 import S3Hook
+from airflow.providers.amazon.aws.sensors.s3 import S3KeySensor
 from airflow.providers.postgres.hooks.postgres import PostgresHook
 from airflow.providers.samba.hooks.samba import SambaHook
 from airflow.sdk import Asset, task, dag, Variable
@@ -261,7 +262,19 @@ def get_s3_object_bytes(s3, key: str, bucket: str) -> BytesIO:
     schedule=(Asset(AssetName.EXIF_TS_HELPER_AVAIL)),
 )
 def dag():
-    @task
+
+    wait_for_any_s3_file = S3KeySensor(
+        task_id='wait_for_any_s3_file',
+        bucket_key='*',  # Use '*' to match any file within the prefix
+        bucket_name=Variable.get(VariableName.BUCKET_LANDING),  # Replace with your actual bucket name
+        wildcard_match=True,  # Enable wildcard matching
+        poke_interval=60,  # Check every 60 seconds (adjust as needed)
+        timeout=3600,  # Timeout after 1 hour (adjust as needed)
+        aws_conn_id=Conn.MINIO,  # Replace with your AWS connection ID if not default
+        mode='poke'  # Use 'poke' for regular polling.  'reschedule' is an alternative.
+    )
+
+    @task(outlets=[Asset(AssetName.NEW_FILES_IMPORTED)])
     def import_landing_files() -> list[str]:
         return import_from_s3(
             landing_bucket=Variable.get(VariableName.BUCKET_LANDING),
@@ -273,25 +286,7 @@ def dag():
             smb_hook_storage=SambaHook.get_hook(Conn.SMB_COLLECTION),
         )
 
-    @task.branch
-    def choose_branch(import_landing_files: list[str]):
-        if len(import_landing_files) > 0:
-            return ['new_files_imported']
-        else:
-            return ['none_imported']
-
-    @task(outlets=[Asset(AssetName.NEW_FILES_IMPORTED)])
-    def new_files_imported(imported_storage_paths) -> list[str]:
-        return imported_storage_paths
-
-    @task
-    def none_imported():
-        pass
-
-    imported_storage_paths = import_landing_files()
-    choose_branch(imported_storage_paths) >> [
-        new_files_imported(imported_storage_paths),
-        none_imported()]
+    wait_for_any_s3_file >> import_landing_files()
 
 
 dag()
