@@ -12,16 +12,18 @@ from airflow.sdk import Asset, dag, task, Variable
 from smbprotocol.exceptions import SMBOSError
 
 from fdwh_config import Conn, VariableName, AssetName, dag_default_args
+from fdwh_op_check_helper_available import CheckHelperAvailableOperator
 
 
-@dag(max_active_runs=1,
-     default_args=dag_default_args,
-     schedule=[
-         Asset(AssetName.METADATA_HELPER_AVAIL),
-         Asset(AssetName.EDM_TREE_UPDATED)
-     ],
-     )
+@dag(max_active_runs=1, default_args=dag_default_args, schedule=[Asset(AssetName.EDM_TREE_UPDATED)])
 def add_missing_metadata():
+
+    assert_metadata_helper_available = CheckHelperAvailableOperator(
+        task_id="assert_metadata_helper_available",
+        url=Variable.get(VariableName.METADATA_ENDPOINT),
+        outlets=[Asset(AssetName.METADATA_HELPER_AVAIL)])
+
+
     find_missing_metadata_archive = SQLExecuteQueryOperator(
         task_id='find_missing_metadata_archive',
         conn_id=Conn.POSTGRES,
@@ -34,7 +36,7 @@ def add_missing_metadata():
         if len(missing_items) > 0:
             add_missing_metadata(Conn.SMB_ARCHIVE, Variable.get(VariableName.RP_ARCHIVE), missing_items)
 
-    find_missing_metadata_archive >> add_missing_metadata_archive()
+    assert_metadata_helper_available >> find_missing_metadata_archive >> add_missing_metadata_archive()
 
     find_missing_metadata_collection = SQLExecuteQueryOperator(
         task_id='find_missing_metadata_collection',
@@ -48,7 +50,7 @@ def add_missing_metadata():
         if len(missing_items) > 0:
             add_missing_metadata(Conn.SMB_COLLECTION, Variable.get(VariableName.RP_COLLECTION), missing_items)
 
-    find_missing_metadata_collection >> add_missing_metadata_collection()
+    assert_metadata_helper_available >> find_missing_metadata_collection >> add_missing_metadata_collection()
 
     find_missing_metadata_trash = SQLExecuteQueryOperator(
         task_id='find_missing_metadata_trash',
@@ -62,7 +64,7 @@ def add_missing_metadata():
         if len(missing_items) > 0:
             add_missing_metadata(Conn.SMB_TRASH, Variable.get(VariableName.RP_TRASH), missing_items)
 
-    find_missing_metadata_trash >> add_missing_metadata_trash()
+    assert_metadata_helper_available >> find_missing_metadata_trash >> add_missing_metadata_trash()
 
 
 add_missing_metadata()

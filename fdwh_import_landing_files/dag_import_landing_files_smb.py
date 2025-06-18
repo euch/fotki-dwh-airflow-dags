@@ -13,6 +13,7 @@ from airflow.sdk import task, dag, Asset, Variable
 from dataclasses_json import dataclass_json
 
 from fdwh_config import *
+from fdwh_op_check_helper_available import CheckHelperAvailableOperator
 
 
 @contextmanager
@@ -129,33 +130,21 @@ def import_file(basename, local_filepath, smb_hook_collection, timestamp) -> Pro
     dag_id=DagName.IMPORT_LANDING_FILES_SMB,
     max_active_runs=1,
     default_args=dag_default_args,
-    schedule=(Asset(AssetName.EXIF_TS_HELPER_AVAIL)),
+    schedule=None,
 )
 def dag():
-    @task
+    assert_exif_helper_available = CheckHelperAvailableOperator(
+        task_id="assert_exif_helper_available",
+        url=Variable.get(VariableName.EXIF_TS_ENDPOINT),
+        outlets=[Asset(AssetName.EXIF_TS_HELPER_AVAIL)])
+
+    @task(outlets=[Asset(AssetName.NEW_FILES_IMPORTED)])
     def import_landing_files() -> list[str]:
         result: list[ProcessedFile] = process_files_recursively(Variable.get(VariableName.LP_LANDING))
         return list(map(lambda x: x.new_path, result))
 
-    @task.branch
-    def choose_branch(import_landing_files: list[str]):
-        if len(import_landing_files) > 0:
-            return ['new_files_imported']
-        else:
-            return ['none_imported']
 
-    @task(outlets=[Asset(AssetName.NEW_FILES_IMPORTED)])
-    def new_files_imported(imported_storage_paths) -> list[str]:
-        return imported_storage_paths
-
-    @task
-    def none_imported():
-        pass
-
-    imported_storage_paths = import_landing_files()
-    choose_branch(imported_storage_paths) >> [
-        new_files_imported(imported_storage_paths),
-        none_imported()]
+    assert_exif_helper_available >> import_landing_files()
 
 
 dag()

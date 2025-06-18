@@ -1,36 +1,28 @@
-import socket
 from datetime import timedelta
-from urllib.parse import urlparse
 
-from airflow.sdk import asset, Variable
+from airflow.sdk import Asset, Variable, dag
+from airflow.timetables.trigger import DeltaTriggerTimetable
 
-from fdwh_config import VariableName, AssetName
-
-default_args = {
-    'retries': 10,
-    'retry_delay': 300,
-    'retry_exponential_backoff': True
-}
+from fdwh_config import VariableName, AssetName, dag_default_args, DagName
+from fdwh_op_check_helper_available import CheckHelperAvailableOperator
 
 
-@asset(name=AssetName.METADATA_HELPER_AVAIL, schedule=timedelta(minutes=10))
-def check_metadata() -> bool:
-    return check_host_avail(Variable.get(VariableName.METADATA_ENDPOINT))
+@dag(dag_id=DagName.PING_SERVICES, max_active_runs=1, default_args=dag_default_args, schedule=DeltaTriggerTimetable(timedelta(hours=1)))
+def dag():
+    CheckHelperAvailableOperator(
+        task_id="check_metadata",
+        url=Variable.get(VariableName.METADATA_ENDPOINT),
+        outlets=[Asset(AssetName.METADATA_HELPER_AVAIL)])
+
+    CheckHelperAvailableOperator(
+        task_id="check_exif_ts",
+        url=Variable.get(VariableName.EXIF_TS_ENDPOINT),
+        outlets=[Asset(AssetName.EXIF_TS_HELPER_AVAIL)])
+
+    CheckHelperAvailableOperator(
+        task_id="check_ai_desc",
+        url=Variable.get(VariableName.AI_DESCR_ENDPOINT),
+        outlets=[Asset(AssetName.AI_DESCR_HELPER_AVAIL)])
 
 
-@asset(name=AssetName.EXIF_TS_HELPER_AVAIL, schedule=timedelta(minutes=10))
-def check_exif_ts() -> bool:
-    return check_host_avail(Variable.get(VariableName.EXIF_TS_ENDPOINT))
-
-
-@asset(name=AssetName.AI_DESCR_HELPER_AVAIL, schedule=timedelta(minutes=10))
-def check_ai_desc() -> bool:
-    return check_host_avail(Variable.get(VariableName.AI_DESCR_ENDPOINT))
-
-
-def check_host_avail(url: str):
-    parsed_url = urlparse(url)
-    host = parsed_url.hostname
-    port = parsed_url.port if parsed_url.port else (80 if parsed_url.scheme == 'http' else 443)
-    with socket.create_connection((host, port), timeout=60):
-        return True
+dag()

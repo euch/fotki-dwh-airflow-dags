@@ -30,6 +30,7 @@ class DagName:
     REFRESH_EDM_TREE = _prefix + 'refresh_edm_tree'
     RM_COLLECTION_DUPLICATES = _prefix + 'rm_collection_duplicates'
     UPDATE_DATAMARTS = _prefix + 'update_datamarts'
+    PING_SERVICES = _prefix + 'ping_services'
 
 
 class AssetName:

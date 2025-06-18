@@ -2,7 +2,7 @@ import hashlib
 import re
 from contextlib import contextmanager
 from dataclasses import dataclass
-from datetime import datetime, UTC
+from datetime import datetime, UTC, timedelta
 from io import BytesIO
 
 import requests
@@ -11,10 +11,12 @@ from airflow.providers.amazon.aws.sensors.s3 import S3KeySensor
 from airflow.providers.postgres.hooks.postgres import PostgresHook
 from airflow.providers.samba.hooks.samba import SambaHook
 from airflow.sdk import Asset, task, dag, Variable
+from airflow.timetables.trigger import DeltaTriggerTimetable
 from dataclasses_json import dataclass_json
 from smbclient import shutil
 
 from fdwh_config import *
+from fdwh_op_check_helper_available import CheckHelperAvailableOperator
 
 Y_D_M_H_M = "%Y-%d-%m_%H%M"
 
@@ -259,10 +261,9 @@ def get_s3_object_bytes(s3, key: str, bucket: str) -> BytesIO:
     dag_id=DagName.IMPORT_LANDING_FILES_S3,
     max_active_runs=1,
     default_args=dag_default_args,
-    schedule=(Asset(AssetName.EXIF_TS_HELPER_AVAIL)),
+    schedule=DeltaTriggerTimetable(timedelta(minutes=1)),
 )
 def dag():
-
     wait_for_any_s3_file = S3KeySensor(
         task_id='wait_for_any_s3_file',
         bucket_key='*',  # Use '*' to match any file within the prefix
@@ -273,6 +274,11 @@ def dag():
         aws_conn_id=Conn.MINIO,  # Replace with your AWS connection ID if not default
         mode='poke'  # Use 'poke' for regular polling.  'reschedule' is an alternative.
     )
+
+    assert_exif_helper_available = CheckHelperAvailableOperator(
+        task_id="assert_exif_helper_available",
+        url=Variable.get(VariableName.EXIF_TS_ENDPOINT),
+        outlets=[Asset(AssetName.EXIF_TS_HELPER_AVAIL)])
 
     @task(outlets=[Asset(AssetName.NEW_FILES_IMPORTED)])
     def import_landing_files() -> list[str]:
@@ -286,7 +292,7 @@ def dag():
             smb_hook_storage=SambaHook.get_hook(Conn.SMB_COLLECTION),
         )
 
-    wait_for_any_s3_file >> import_landing_files()
+    wait_for_any_s3_file >> assert_exif_helper_available >> import_landing_files()
 
 
 dag()
