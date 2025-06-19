@@ -3,7 +3,7 @@ from airflow.providers.ssh.operators.ssh import SSHOperator
 
 def cmd_create_tree(location_rp: str, remote_csv_name) -> str:
     return f'''
-        find "{location_rp}" -type f -print0 | xargs -0r stat -f '%N	%m	%z' > "{location_rp}"/"{remote_csv_name}"
+        find "{location_rp}" -type f -print0 | xargs -P4 -0r stat -f '%N	%m	%z' > "{location_rp}"/"{remote_csv_name}"
     '''
 
 
