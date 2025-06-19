@@ -68,6 +68,3 @@ class VariableName:
     AI_DESCR_ENDPOINT = _var_prefix + 'AI_DESCR_ENDPOINT'
     METADATA_ENDPOINT = _var_prefix + 'METADATA_ENDPOINT'
     EXIF_TS_ENDPOINT = _var_prefix + 'EXIF_TS_ENDPOINT'
-
-    LP_LANDING = _var_prefix + 'LP_LANDING'
-    LP_REJECTED = _var_prefix + 'LP_REJECTED'
