@@ -157,8 +157,8 @@ def get_md5_hash(s3, landing_bucket_key: str, landing_bucket: str,
 def hash_already_used(md5_hash, pg_hook: PostgresHook) -> bool:
     records = pg_hook.get_records(
         "select 1 "
-        "from edm.metadata m "
-        "join edm.tree t on t.abs_filename = m.abs_filename "
+        "from core.metadata m "
+        "join core.tree t on t.abs_filename = m.abs_filename "
         f"where t.\"type\" = 'collection' and m.hash = '{md5_hash}' "
     )
     return len(records) > 0

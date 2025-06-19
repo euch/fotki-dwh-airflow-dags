@@ -73,8 +73,8 @@ def process_image(companion_files, exif_timestamp, imported_images, local_filepa
         assert file_hash
         metadata_found: bool = len(pg_hook.get_records(
             "select 1 "
-            "from edm.metadata m "
-            "join edm.tree t on t.abs_filename = m.abs_filename "
+            "from core.metadata m "
+            "join core.tree t on t.abs_filename = m.abs_filename "
             f"where t.\"type\" = 'collection' and m.hash = '{file_hash}' "
         )) > 0
         if metadata_found:

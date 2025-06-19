@@ -9,12 +9,12 @@ create temporary table new_files as (
       select
         1
       from
-        edm.tree
+        core.tree
       where
-        raw.tree_all.abs_filename = edm.tree.abs_filename
+        raw.tree_all.abs_filename = core.tree.abs_filename
     )
 );
-insert into edm.tree (
+insert into core.tree (
   abs_filename, last_modified_ts, "size",
   "type"
 )
@@ -25,7 +25,7 @@ select
   "type"
 from
   new_files;
-insert into log.edm_log (abs_filename, tree_add_ts)
+insert into log.core_log (abs_filename, tree_add_ts)
 select
   abs_filename,
   now()

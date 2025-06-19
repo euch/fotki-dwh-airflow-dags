@@ -3,7 +3,7 @@ with files_and_types as (
 		abs_filename,
 		regexp_replace(abs_filename, '^.*[.]([^.]+)$', '\1') as file_type
 	from
-		edm.tree
+		core.tree
 )
 insert into dm.files_and_types
 SELECT

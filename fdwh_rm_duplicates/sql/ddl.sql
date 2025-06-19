@@ -1,6 +1,6 @@
 -- DROP SCHEMA duplicates;
 
-CREATE SCHEMA duplicates AUTHORIZATION postgres;
+CREATE SCHEMA duplicates;
 -- duplicates.collection_duplicates definition
 
 -- Drop table

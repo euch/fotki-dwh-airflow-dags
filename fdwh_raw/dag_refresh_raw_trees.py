@@ -6,9 +6,9 @@ from airflow.timetables.assets import AssetOrTimeSchedule
 from airflow.timetables.trigger import CronTriggerTimetable
 
 from fdwh_config import *
-from fdwh_refresh_raw_trees.op_bulk_insert import BulkInsertOperator
-from fdwh_refresh_raw_trees.op_create_remote_tree_csv import CreateRemoteTreeCsvOperator
-from fdwh_refresh_raw_trees.op_smb_download import SmbDownloadOperator
+from fdwh_raw.op_bulk_insert import BulkInsertOperator
+from fdwh_raw.op_create_remote_tree_csv import CreateRemoteTreeCsvOperator
+from fdwh_raw.op_smb_download import SmbDownloadOperator
 
 
 @dataclass

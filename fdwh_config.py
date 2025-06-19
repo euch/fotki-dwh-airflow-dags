@@ -27,16 +27,16 @@ class DagName:
     IMPORT_LANDING_FILES_S3 = _prefix + 'import_landing_files_s3'
     IMPORT_LANDING_FILES_SMB = _prefix + 'import_landing_files_smb'
     REFRESH_RAW_TREES = _prefix + 'refresh_raw_trees'
-    REFRESH_EDM_TREE = _prefix + 'refresh_edm_tree'
+    REFRESH_CORE_TREE = _prefix + 'refresh_core_tree'
     RM_COLLECTION_DUPLICATES = _prefix + 'rm_collection_duplicates'
     UPDATE_DATAMARTS = _prefix + 'update_datamarts'
     PING_SERVICES = _prefix + 'ping_services'
 
 
 class AssetName:
-    NEW_FILES_IMPORTED = 'fdwh_as_new_files_imported'
-    RAW_TREES_UPDATED = 'fdwh_as_raw_trees_updated'
-    EDM_TREE_UPDATED = 'fdwh_as_edm_tree_updated'
+    NEW_FILES_IMPORTED = 'fdwh_new_files_imported'
+    RAW_TREES_UPDATED = 'fdwh_raw_trees_updated'
+    CORE_TREE_UPDATED = 'fdwh_core_tree_updated'
 
     METADATA_HELPER_AVAIL = 'fdwh_metadata_helper_avail'
     EXIF_TS_HELPER_AVAIL = 'fdwh_exif_ts_helper_avail'

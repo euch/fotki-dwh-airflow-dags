@@ -15,7 +15,7 @@ from fdwh_config import Conn, VariableName, AssetName, dag_default_args
 from fdwh_op_check_helper_available import CheckHelperAvailableOperator
 
 
-@dag(max_active_runs=1, default_args=dag_default_args, schedule=[Asset(AssetName.EDM_TREE_UPDATED)])
+@dag(max_active_runs=1, default_args=dag_default_args, schedule=[Asset(AssetName.CORE_TREE_UPDATED)])
 def add_missing_metadata():
 
     assert_metadata_helper_available = CheckHelperAvailableOperator(
@@ -92,7 +92,7 @@ def add_missing_metadata(smb_conn_name: str, remote_path: str, items):
                 hashsum = hashlib.file_digest(file, "md5").hexdigest()
                 print(f'hashsum = {hashsum}')
 
-                pg_hook.run("insert into edm.metadata (abs_filename, hash, exif, preview) values (%s,%s,%s,%s)",
+                pg_hook.run("insert into core.metadata (abs_filename, hash, exif, preview) values (%s,%s,%s,%s)",
                             parameters=(abs_filename,
                                         hashsum,
                                         None if metadata['exif'] is None else json.dumps(metadata['exif']),
@@ -101,7 +101,7 @@ def add_missing_metadata(smb_conn_name: str, remote_path: str, items):
                 pg_hook.run(
                     """
                     update
-                        log.edm_log 
+                        log.core_log 
                     set 
                         metadata_add_ts = %s,
                         hash = %s
