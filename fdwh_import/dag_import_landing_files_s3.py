@@ -47,6 +47,10 @@ class GoodImportItem(ImportItem):
     status = "import"
     obj_bytes: BytesIO
 
+    def safe_obj_bytes(self):
+        self.obj_bytes.seek(0)
+        return self.obj_bytes
+
 
 @dataclass_json
 @dataclass
@@ -184,7 +188,7 @@ def move_s3_import_item(s3, smb_hook_storage, import_item: ImportItem):
     if isinstance(import_item, GoodImportItem):
         smb_hook_storage.makedirs(import_item.storage_dir, exist_ok=True)
         with smb_hook_storage.open_file(import_item.storage_path, mode="wb") as g:
-            shutil.copyfileobj(import_item.obj_bytes, g)
+            shutil.copyfileobj(import_item.safe_obj_bytes(), g)
         s3.delete_object(Bucket=import_item.landing_bucket, Key=import_item.landing_bucket_key)
 
 
