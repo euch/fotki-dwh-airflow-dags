@@ -83,7 +83,10 @@ def add_missing_metadata(smb_conn_name: str, remote_path: str, items):
                 files = {'file': file}
                 response = requests.post(Variable.get(VariableName.METADATA_ENDPOINT), files=files)
                 print(f'Metadata endpoint responded with code {response.status_code}')
-                assert response.status_code == 200
+                if response.status_code != 200:
+                    print(response)
+                    break
+
                 metadata = response.json()
 
                 if metadata['preview'] is not None:
