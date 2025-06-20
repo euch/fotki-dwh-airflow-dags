@@ -18,7 +18,7 @@ from smbclient import shutil
 from fdwh_config import *
 from fdwh_op_check_helper_available import CheckHelperAvailableOperator
 
-Y_D_M_H_M = "%Y-%d-%m_%H%M"
+Y_D_M_H_M = "%Y-%m-%d_%H%M"
 
 
 @contextmanager
