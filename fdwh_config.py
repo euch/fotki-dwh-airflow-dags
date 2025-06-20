@@ -1,5 +1,3 @@
-SCHEDULE_DAILY = '@daily'
-SCHEDULE_MANUAL = None
 
 dag_default_args = {
     'retries': 0,
