@@ -1,6 +1,6 @@
 import unittest
 
-from fdwh_sort_landing_files.dag_sort_landing_files import validate_subfolder_fmt, get_subfolder_from_prefix
+from fdwh_import.utils.get_subfolder import validate_subfolder_fmt, get_subfolder_from_prefix
 
 
 class TestSubfolderMethods(unittest.TestCase):
@@ -11,21 +11,16 @@ class TestSubfolderMethods(unittest.TestCase):
         self.assertTrue(validate_subfolder_fmt("1999-12-31 End of the century"))
 
     def test_validate_subfolder_fmt_invalid_date(self):
-        self.assertIsNone(validate_subfolder_fmt("2023-06-10 description"))
-        self.assertIsNone(validate_subfolder_fmt("2020-01-01 New Year"))
-        self.assertIsNone(validate_subfolder_fmt("1999-12-31 End of the century"))
-        self.assertIsNone(validate_subfolder_fmt("1999-13-31 End of the century"))
+        self.assertFalse(validate_subfolder_fmt("1999-13-31 End of the century"))
+        self.assertFalse(validate_subfolder_fmt("2023-06-32 Invalid date"))
+        self.assertFalse(validate_subfolder_fmt("2023-02-30 Invalid date"))
+        self.assertFalse(validate_subfolder_fmt("2023-04-31 Invalid date"))
 
     def test_validate_subfolder_fmt_invalid_format(self):
         self.assertFalse(validate_subfolder_fmt("2023/06/10 description"))
         self.assertFalse(validate_subfolder_fmt("2023-06-10"))
-        self.assertFalse(validate_subfolder_fmt("2023-06-32 Invalid date"))
         self.assertFalse(validate_subfolder_fmt("2023-13-01 Invalid month"))
         self.assertFalse(validate_subfolder_fmt("Invalid date format"))
-
-    def test_validate_subfolder_fmt_invalid_date(self):
-        self.assertFalse(validate_subfolder_fmt("2023-02-30 Invalid date"))
-        self.assertFalse(validate_subfolder_fmt("2023-04-31 Invalid date"))
 
     def test_get_subfolder_from_prefix_valid(self):
         self.assertEqual(get_subfolder_from_prefix("2023-06-10 description/other/path"), "2023-06-10 description")
