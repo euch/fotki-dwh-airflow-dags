@@ -23,13 +23,13 @@ from fdwh_op_check_helper_available import CheckHelperAvailableOperator
 def dag():
     wait_for_any_s3_file = S3KeySensor(
         task_id='wait_for_any_s3_file',
-        bucket_key='*',  # Use '*' to match any file within the prefix
-        bucket_name=Variable.get(VariableName.BUCKET_LANDING),  # Replace with your actual bucket name
-        wildcard_match=True,  # Enable wildcard matching
-        poke_interval=60,  # Check every 60 seconds (adjust as needed)
-        timeout=3600,  # Timeout after 1 hour (adjust as needed)
-        aws_conn_id=Conn.MINIO,  # Replace with your AWS connection ID if not default
-        mode='poke'  # Use 'poke' for regular polling.  'reschedule' is an alternative.
+        bucket_key='*',
+        bucket_name=Variable.get(VariableName.BUCKET_LANDING),
+        wildcard_match=True,
+        poke_interval=60,  # Check every 60 seconds
+        timeout=21600,  # Timeout after 6 hour
+        aws_conn_id=Conn.MINIO,
+        soft_fail=True,
     )
 
     assert_exif_helper_available = CheckHelperAvailableOperator(
