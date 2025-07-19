@@ -9,7 +9,7 @@ mt = Asset(AssetName.METADATA_UPDATED_TRASH)
 aidc = Asset(AssetName.AI_DESCR_UPDATED_COLLECTION)
 
 
-@dag(dag_display_name=DagName.UPDATE_DATAMARTS,
+@dag(dag_display_name=DagName.REFRESH_DATAMARTS,
      schedule=((ma & mc & mt) | (aidc & ma & mc & mt)),
      default_args=dag_default_args)
 def update_dm():

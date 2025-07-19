@@ -24,11 +24,12 @@ class DagName:
     FIND_MISSING_METADATA = _prefix + 'find_missing_metadata'
     IMPORT_LANDING_FILES_S3 = _prefix + 'import_landing_files_s3'
     IMPORT_LANDING_FILES_SMB = _prefix + 'import_landing_files_smb'
-    REFRESH_RAW_TREES = _prefix + 'refresh_raw_trees'
-    REFRESH_CORE_TREE = _prefix + 'refresh_core_tree'
-    RM_COLLECTION_DUPLICATES = _prefix + 'rm_collection_duplicates'
-    UPDATE_DATAMARTS = _prefix + 'update_datamarts'
     PING_SERVICES = _prefix + 'ping_services'
+    REFRESH_CORE_TREE = _prefix + 'refresh_core_tree'
+    REFRESH_DATAMARTS = _prefix + 'refresh_datamarts'
+    REFRESH_RAW_TREES = _prefix + 'refresh_raw_trees'
+    REFRESH_WORKCOPY_SYMLINKS = _prefix + 'refresh_workcopy_symlinks'
+    RM_COLLECTION_DUPLICATES = _prefix + 'rm_collection_duplicates'
 
 
 class AssetName:
@@ -62,6 +63,7 @@ class VariableName:
     RP_ARCHIVE = _var_prefix + 'RP_ARCHIVE'
     RP_COLLECTION = _var_prefix + 'RP_COLLECTION'
     RP_TRASH = _var_prefix + 'RP_TRASH'
+    RP_WORKCOPY = _var_prefix + 'RP_WORKCOPY'
 
     AI_DESCR_ENDPOINT = _var_prefix + 'AI_DESCR_ENDPOINT'
     METADATA_ENDPOINT = _var_prefix + 'METADATA_ENDPOINT'
