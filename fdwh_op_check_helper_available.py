@@ -1,6 +1,7 @@
 import socket
 from urllib.parse import urlparse
 
+from airflow.exceptions import AirflowSkipException
 from airflow.models import BaseOperator
 
 
@@ -13,5 +14,10 @@ class CheckHelperAvailableOperator(BaseOperator):
         parsed_url = urlparse(self.url)
         host = parsed_url.hostname
         port = parsed_url.port if parsed_url.port else (80 if parsed_url.scheme == 'http' else 443)
-        with socket.create_connection((host, port), timeout=60):
-            pass
+        try:
+            with socket.create_connection((host, port), timeout=60):
+                pass
+        except OSError as e:
+            if '[Errno 113]' in str(e):
+                raise AirflowSkipException("No route to host") from e
+            raise e
