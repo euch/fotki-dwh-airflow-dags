@@ -14,15 +14,15 @@ from smbprotocol.exceptions import SMBOSError
 from fdwh_config import Conn, VariableName, AssetName, dag_default_args
 from fdwh_op_check_helper_available import CheckHelperAvailableOperator
 
+default_args = dag_default_args | {'dag_concurrency': 1}
 
-@dag(max_active_runs=1, default_args=dag_default_args, schedule=[Asset(AssetName.CORE_TREE_UPDATED)])
+
+@dag(max_active_runs=1, default_args=default_args, schedule=[Asset(AssetName.CORE_TREE_UPDATED)])
 def add_missing_metadata():
-
     assert_metadata_helper_available = CheckHelperAvailableOperator(
         task_id="assert_metadata_helper_available",
         url=Variable.get(VariableName.METADATA_ENDPOINT),
         outlets=[Asset(AssetName.METADATA_HELPER_AVAIL)])
-
 
     find_missing_metadata_archive = SQLExecuteQueryOperator(
         task_id='find_missing_metadata_archive',
@@ -34,7 +34,7 @@ def add_missing_metadata():
     def add_missing_metadata_archive(**context):
         missing_items = context["ti"].xcom_pull(task_ids="find_missing_metadata_archive", key="return_value")
         if len(missing_items) > 0:
-            add_missing_metadata(Conn.SMB_ARCHIVE, Variable.get(VariableName.RP_ARCHIVE), missing_items)
+            _add_missing_metadata(Conn.SMB_ARCHIVE, Variable.get(VariableName.RP_ARCHIVE), missing_items)
 
     assert_metadata_helper_available >> find_missing_metadata_archive >> add_missing_metadata_archive()
 
@@ -48,7 +48,7 @@ def add_missing_metadata():
     def add_missing_metadata_collection(**context):
         missing_items = context["ti"].xcom_pull(task_ids="find_missing_metadata_collection", key="return_value")
         if len(missing_items) > 0:
-            add_missing_metadata(Conn.SMB_COLLECTION, Variable.get(VariableName.RP_COLLECTION), missing_items)
+            _add_missing_metadata(Conn.SMB_COLLECTION, Variable.get(VariableName.RP_COLLECTION), missing_items)
 
     assert_metadata_helper_available >> find_missing_metadata_collection >> add_missing_metadata_collection()
 
@@ -62,7 +62,7 @@ def add_missing_metadata():
     def add_missing_metadata_trash(**context):
         missing_items = context["ti"].xcom_pull(task_ids="find_missing_metadata_trash", key="return_value")
         if len(missing_items) > 0:
-            add_missing_metadata(Conn.SMB_TRASH, Variable.get(VariableName.RP_TRASH), missing_items)
+            _add_missing_metadata(Conn.SMB_TRASH, Variable.get(VariableName.RP_TRASH), missing_items)
 
     assert_metadata_helper_available >> find_missing_metadata_trash >> add_missing_metadata_trash()
 
@@ -70,7 +70,7 @@ def add_missing_metadata():
 add_missing_metadata()
 
 
-def add_missing_metadata(smb_conn_name: str, remote_path: str, items):
+def _add_missing_metadata(smb_conn_name: str, remote_path: str, items):
     pg_hook = PostgresHook.get_hook(Conn.POSTGRES)
     smb_hook = SambaHook.get_hook(smb_conn_name)
     for item in items:
@@ -85,31 +85,30 @@ def add_missing_metadata(smb_conn_name: str, remote_path: str, items):
                 print(f'Metadata endpoint responded with code {response.status_code}')
                 if response.status_code != 200:
                     print(response)
-                    break
+                else:
+                    metadata = response.json()
 
-                metadata = response.json()
+                    if metadata['preview'] is not None:
+                        preview_bytes = base64.b64decode(metadata['preview'])
 
-                if metadata['preview'] is not None:
-                    preview_bytes = base64.b64decode(metadata['preview'])
+                    hashsum = hashlib.file_digest(file, "md5").hexdigest()
+                    print(f'hashsum = {hashsum}')
 
-                hashsum = hashlib.file_digest(file, "md5").hexdigest()
-                print(f'hashsum = {hashsum}')
+                    pg_hook.run("insert into core.metadata (abs_filename, hash, exif, preview) values (%s,%s,%s,%s)",
+                                parameters=(abs_filename,
+                                            hashsum,
+                                            None if metadata['exif'] is None else json.dumps(metadata['exif']),
+                                            None if preview_bytes is None else psql.Binary(preview_bytes)))
 
-                pg_hook.run("insert into core.metadata (abs_filename, hash, exif, preview) values (%s,%s,%s,%s)",
-                            parameters=(abs_filename,
-                                        hashsum,
-                                        None if metadata['exif'] is None else json.dumps(metadata['exif']),
-                                        None if preview_bytes is None else psql.Binary(preview_bytes)))
-
-                pg_hook.run(
-                    """
-                    update
-                        log.core_log 
-                    set 
-                        metadata_add_ts = %s,
-                        hash = %s
-                    where
-                        abs_filename = %s;
-                    """, parameters=(datetime.now(), hashsum, abs_filename))
+                    pg_hook.run(
+                        """
+                        update
+                            log.core_log 
+                        set 
+                            metadata_add_ts = %s,
+                            hash = %s
+                        where
+                            abs_filename = %s;
+                        """, parameters=(datetime.now(), hashsum, abs_filename))
         except SMBOSError as smb_err:
             print(smb_err)
