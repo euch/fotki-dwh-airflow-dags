@@ -11,7 +11,7 @@ aidc = Asset(AssetName.AI_DESCR_UPDATED_COLLECTION)
 
 @dag(dag_display_name=DagName.REFRESH_DATAMARTS,
      schedule=((ma & mc & mt) | (aidc & ma & mc & mt)),
-     default_args=dag_default_args)
+     default_args=dag_default_args, max_active_runs=1)
 def update_dm():
     SQLExecuteQueryOperator(
         task_id='dm_counts_insert',
