@@ -14,10 +14,9 @@ from smbprotocol.exceptions import SMBOSError
 from fdwh_config import Conn, VariableName, AssetName, dag_default_args
 from fdwh_op_check_helper_available import CheckHelperAvailableOperator
 
-default_args = dag_default_args | {'dag_concurrency': 1}
 
-
-@dag(max_active_runs=1, default_args=default_args, schedule=[Asset(AssetName.CORE_TREE_UPDATED)])
+@dag(max_active_runs=1, max_active_tasks=1,
+     default_args=dag_default_args, schedule=[Asset(AssetName.CORE_TREE_UPDATED)])
 def add_missing_metadata():
     assert_metadata_helper_available = CheckHelperAvailableOperator(
         task_id="assert_metadata_helper_available",
