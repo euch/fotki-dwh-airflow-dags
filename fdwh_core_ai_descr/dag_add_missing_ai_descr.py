@@ -2,11 +2,61 @@ import io
 from datetime import datetime
 
 import requests
-from airflow.providers.common.sql.operators.sql import SQLExecuteQueryOperator
 from airflow.providers.postgres.hooks.postgres import PostgresHook
 from airflow.sdk import Asset, Variable, dag, task
 
 from fdwh_config import *
+from fdwh_core_ai_descr.dto.add_ai_descr_item import AddAiDescrItem
+
+missing_ai_descr_select_sql = '''
+select
+	m.abs_filename ,
+	preview,
+	COUNT(*) over() as total_records,
+	row_number() over(
+	order by cl.tree_add_ts desc) as row_num
+from
+	core.metadata m
+left join core.ai_description ad on
+	ad.abs_filename = m.abs_filename
+join log.core_log cl on
+	cl.abs_filename = m.abs_filename
+join core.tree t on
+	t.abs_filename = m.abs_filename
+where
+	ad is null
+	and
+m.preview is not null
+	and 
+t."type" = 'collection'
+order by
+	cl.tree_add_ts desc
+limit 5;
+'''
+
+insert_ai_descr_sql = f'''
+insert
+	into
+	core.ai_description (abs_filename,
+	caption_vit_gpt2)
+values (%s,
+%s)
+on
+conflict (abs_filename) 
+do
+update
+set
+	caption_vit_gpt2 = %s;
+'''
+
+update_log_sql = '''
+update
+	log.core_log
+set
+	ai_description_add_ts = %s
+where
+	abs_filename = %s
+'''
 
 
 @dag(max_active_runs=1,
@@ -17,41 +67,30 @@ from fdwh_config import *
      ],
      )
 def add_missing_ai_descr():
-    find_missing_ai_descr_collection = SQLExecuteQueryOperator(
-        task_id='find_missing_ai_descr_collection',
-        conn_id=Conn.POSTGRES,
-        sql='sql/find_missing_ai_descr_collection.sql',
-        do_xcom_push=True)
-
     @task(outlets=[Asset(AssetName.AI_DESCR_UPDATED_COLLECTION)])
-    def add_missing_ai_descr_collection(**context) -> None:
-        missing_items = context["ti"].xcom_pull(task_ids="find_missing_ai_descr_collection", key="return_value")
-        if len(missing_items) > 0:
-            pg_hook = PostgresHook.get_hook(Conn.POSTGRES)
-            for item in missing_items:
-                abs_filename = item[0]
-                sql_query = f'SELECT preview FROM core.metadata WHERE abs_filename = %s and preview is not null;'
-                query_result = pg_hook.get_records(sql_query, parameters=[abs_filename])
-                if query_result:
-                    binary_data = query_result[0][0]
-                    flo = io.BytesIO(binary_data)
-                    files = {'file': flo}
-                    response = requests.post(Variable.get(VariableName.AI_DESCR_ENDPOINT), files=files)
-                    if response.status_code == 200:
-                        captions = response.json()["description"]
-                        sql = f'''
-                                        INSERT INTO core.ai_description (abs_filename, caption_vit_gpt2)
-                                        VALUES (%s, %s)
-                                        ON CONFLICT (abs_filename) 
-                                        DO UPDATE SET caption_vit_gpt2 = %s;
-                                        '''
-                        pg_hook.run(sql, parameters=[abs_filename, captions, captions])
-                        pg_hook.run("update log.core_log set ai_description_add_ts = %s where abs_filename = %s",
-                                    parameters=(datetime.now(), abs_filename))
-                    else:
-                        print(f"Failed to parse preview bytes. abs_filename = " + abs_filename)
+    def add_missing_ai_descr_collection() -> list[AddAiDescrItem]:
+        pg_hook = PostgresHook.get_hook(Conn.POSTGRES)
+        res: list[AddAiDescrItem] = []
+        while True:
+            for r in pg_hook.get_records(missing_ai_descr_select_sql):
+                abs_filename, preview = r[0], r[1]
+                total_rows, current_row = r[2], r[3]
+                print(f'\n\n{current_row}/{total_rows}: {abs_filename}\n')
 
-    find_missing_ai_descr_collection >> add_missing_ai_descr_collection()
+                response = requests.post(Variable.get(VariableName.AI_DESCR_ENDPOINT),
+                                         files={'file': io.BytesIO(preview)})
+                if response.status_code == 200:
+                    captions = response.json()["description"]
+                    pg_hook.run(insert_ai_descr_sql, parameters=[abs_filename, captions, captions])
+                    pg_hook.run(update_log_sql, parameters=(datetime.now(), abs_filename))
+                else:
+                    print(f'Helper returned status code {response.status_code}')
+
+                    if total_rows == current_row:
+                        print('\n\n\nDONE')
+                    return res
+
+    add_missing_ai_descr_collection()
 
 
 add_missing_ai_descr()
