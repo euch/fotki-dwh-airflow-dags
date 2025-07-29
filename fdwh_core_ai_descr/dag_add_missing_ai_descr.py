@@ -9,28 +9,28 @@ from fdwh_config import *
 from fdwh_core_ai_descr.dto.add_ai_descr_item import AddAiDescrItem
 
 missing_ai_descr_select_sql = '''
-select
-	m.abs_filename ,
-	preview,
-	COUNT(*) over() as total_records,
-	row_number() over(
-	order by cl.tree_add_ts desc) as row_num
+
+select 
+    m.abs_filename,
+    m.preview,
+    CASE 
+        WHEN COUNT(*) OVER() > 5 THEN true 
+        ELSE false 
+    END as has_more_pages
 from
-	core.metadata m
+    core.metadata m
 left join core.ai_description ad on
-	ad.abs_filename = m.abs_filename
+    ad.abs_filename = m.abs_filename
 join log.core_log cl on
-	cl.abs_filename = m.abs_filename
+    cl.abs_filename = m.abs_filename
 join core.tree t on
-	t.abs_filename = m.abs_filename
+    t.abs_filename = m.abs_filename
 where
-	ad is null
-	and
-m.preview is not null
-	and 
-t."type" = 'collection'
+    ad.abs_filename is null
+    and m.preview is not null
+    and t."type" = 'collection'
 order by
-	cl.tree_add_ts desc
+    cl.tree_add_ts desc
 limit 5;
 '''
 
@@ -71,23 +71,22 @@ def add_missing_ai_descr():
     def add_missing_ai_descr_collection() -> list[AddAiDescrItem]:
         pg_hook = PostgresHook.get_hook(Conn.POSTGRES)
         res: list[AddAiDescrItem] = []
+        endpoint = Variable.get(VariableName.AI_DESCR_ENDPOINT)
         while True:
             for r in pg_hook.get_records(missing_ai_descr_select_sql):
-                abs_filename, preview = r[0], r[1]
-                total_rows, current_row = r[2], r[3]
-                print(f'\n\n{current_row}/{total_rows}: {abs_filename}\n')
-
-                response = requests.post(Variable.get(VariableName.AI_DESCR_ENDPOINT),
-                                         files={'file': io.BytesIO(preview)})
+                abs_filename, preview, has_more_records = r[0], r[1], r[3]
+                print(f'{abs_filename}')
+                response = requests.post(endpoint, files={'file': io.BytesIO(preview)})
                 if response.status_code == 200:
                     captions = response.json()["description"]
                     pg_hook.run(insert_ai_descr_sql, parameters=[abs_filename, captions, captions])
                     pg_hook.run(update_log_sql, parameters=(datetime.now(), abs_filename))
+                    res.append(AddAiDescrItem(abs_filename))
                 else:
                     print(f'Helper returned status code {response.status_code}')
+                    res.append(AddAiDescrItem(abs_filename, error=str(response)))
 
-                    if total_rows == current_row:
-                        print('\n\n\nDONE')
+                if not has_more_records:
                     return res
 
     add_missing_ai_descr_collection()
