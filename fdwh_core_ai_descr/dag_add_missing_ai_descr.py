@@ -37,6 +37,7 @@ where
     ad.abs_filename is null
     and m.preview is not null
     and t."type" = %s
+    and t.size < 100000000 -- up to 100 MB limit
 order by
     cl.tree_add_ts desc
 limit 5;
