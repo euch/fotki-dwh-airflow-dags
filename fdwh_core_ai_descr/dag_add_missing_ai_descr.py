@@ -9,12 +9,11 @@ from fdwh_config import *
 from fdwh_core_ai_descr.dto.add_ai_descr_item import AddAiDescrItem
 
 missing_ai_descr_select_sql = '''
-
 select 
     m.abs_filename,
     m.preview,
     CASE 
-        WHEN COUNT(*) OVER() > 5 THEN true 
+        WHEN COUNT(*) OVER() >= 5 THEN true 
         ELSE false 
     END as has_more_pages
 from
@@ -74,8 +73,7 @@ def add_missing_ai_descr():
         endpoint = Variable.get(VariableName.AI_DESCR_ENDPOINT)
         while True:
             for r in pg_hook.get_records(missing_ai_descr_select_sql):
-                abs_filename, preview, has_more_records = r[0], r[1], r[3]
-                print(f'{abs_filename}')
+                abs_filename, preview, has_more_records = r[0], r[1], r[2]
                 response = requests.post(endpoint, files={'file': io.BytesIO(preview)})
                 if response.status_code == 200:
                     captions = response.json()["description"]
