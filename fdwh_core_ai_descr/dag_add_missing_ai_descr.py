@@ -90,7 +90,7 @@ def add_missing_ai_descr():
     def end():
         pass
 
-    assert_ai_descr_helper_available >> add_missing_ai_descr_collection() >> add_missing_ai_descr_archive() >> add_missing_ai_descr_trash() >> end()
+    assert_ai_descr_helper_available >> add_missing_ai_descr_collection() >> add_missing_ai_descr_trash() >> add_missing_ai_descr_archive() >> end()
 
 
 add_missing_ai_descr()
