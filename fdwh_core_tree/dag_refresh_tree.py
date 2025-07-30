@@ -7,7 +7,7 @@ from fdwh_config import *
 with DAG(dag_id=DagName.REFRESH_CORE_TREE,
          max_active_runs=1,
          schedule=[Asset(AssetName.RAW_TREES_UPDATED)],
-         default_args=dag_default_args,
+         default_args=dag_args_noretry,
          ):
     SQLExecuteQueryOperator(
         task_id='tree_delete_old',

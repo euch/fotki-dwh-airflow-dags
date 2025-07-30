@@ -47,7 +47,7 @@ REFRESH_RAW_CONFS: list[RefreshRawConf] = [
 with DAG(
         dag_id=DagName.REFRESH_RAW_TREES,
         max_active_runs=1,
-        default_args=dag_default_args,
+        default_args=dag_args_noretry,
         schedule=AssetOrTimeSchedule(
             timetable=CronTriggerTimetable("0 0,6,12,18 * * *", timezone="UTC"),
             assets=(Asset(AssetName.NEW_FILES_IMPORTED))),

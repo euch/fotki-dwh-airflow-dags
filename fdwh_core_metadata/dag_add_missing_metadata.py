@@ -9,21 +9,18 @@ from airflow.providers.samba.hooks.samba import SambaHook
 from airflow.sdk import Asset, dag, task, Variable
 from smbprotocol.exceptions import SMBOSError
 
-from fdwh_config import Conn, VariableName, AssetName
+from fdwh_config import *
 from fdwh_core_metadata.dto.add_metadata_item import AddMetadataItem
 from fdwh_op_check_helper_available import CheckHelperAvailableOperator
 
 
-@dag(max_active_runs=1, default_args={
-    'retries': 10,
-}, schedule=[Asset(AssetName.CORE_TREE_UPDATED)])
+@dag(max_active_runs=1, default_args=dag_args_retry, schedule=[Asset(AssetName.CORE_TREE_UPDATED)])
 def add_missing_metadata():
     assert_metadata_helper_available = CheckHelperAvailableOperator(
         task_id="assert_metadata_helper_available",
-        url=Variable.get(VariableName.METADATA_ENDPOINT),
-        outlets=[Asset(AssetName.METADATA_HELPER_AVAIL)])
+        url=Variable.get(VariableName.METADATA_ENDPOINT))
 
-    @task(outlets=[Asset(AssetName.METADATA_UPDATED_COLLECTION)])
+    @task
     def add_missing_metadata_collection() -> list[AddMetadataItem]:
         pg_hook = PostgresHook.get_hook(Conn.POSTGRES)
         smb_hook = SambaHook.get_hook(Conn.SMB_COLLECTION)
@@ -33,7 +30,7 @@ def add_missing_metadata():
             results.append(_add_missing(smb_hook, pg_hook, rp, abs_filename))
         return results
 
-    @task(outlets=[Asset(AssetName.METADATA_UPDATED_TRASH)])
+    @task
     def add_missing_metadata_trash() -> list[AddMetadataItem]:
         pg_hook = PostgresHook.get_hook(Conn.POSTGRES)
         smb_hook = SambaHook.get_hook(Conn.SMB_TRASH)
@@ -43,7 +40,7 @@ def add_missing_metadata():
             results.append(_add_missing(smb_hook, pg_hook, rp, abs_filename))
         return results
 
-    @task(outlets=[Asset(AssetName.METADATA_UPDATED_ARCHIVE)])
+    @task
     def add_missing_metadata_archive() -> list[AddMetadataItem]:
         pg_hook = PostgresHook.get_hook(Conn.POSTGRES)
         smb_hook = SambaHook.get_hook(Conn.SMB_ARCHIVE)
@@ -53,7 +50,11 @@ def add_missing_metadata():
             results.append(_add_missing(smb_hook, pg_hook, rp, abs_filename))
         return results
 
-    assert_metadata_helper_available >> add_missing_metadata_collection() >> add_missing_metadata_trash() >> add_missing_metadata_archive()
+    @task(outlets=[Asset[AssetName.CORE_METADATA_UPDATED]])
+    def end():
+        pass
+
+    assert_metadata_helper_available >> add_missing_metadata_collection() >> add_missing_metadata_trash() >> add_missing_metadata_archive() >> end()
 
 
 add_missing_metadata()

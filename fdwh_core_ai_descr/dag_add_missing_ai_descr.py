@@ -59,32 +59,29 @@ where
 '''
 
 
-@dag(max_active_runs=1,
-     default_args=dag_default_args,
-     schedule=[
-         Asset(AssetName.AI_DESCR_HELPER_AVAIL),
-         Asset(AssetName.METADATA_UPDATED_COLLECTION)
-     ],
-     )
+@dag(max_active_runs=1, default_args=dag_args_retry, schedule=[Asset(AssetName.CORE_METADATA_UPDATED)])
 def add_missing_ai_descr():
     assert_ai_descr_helper_available = CheckHelperAvailableOperator(
         task_id='assert_ai_descr_helper_available',
-        url=Variable.get(VariableName.AI_DESCR_ENDPOINT),
-        outlets=[Asset(AssetName.AI_DESCR_HELPER_AVAIL)])
+        url=Variable.get(VariableName.AI_DESCR_ENDPOINT))
 
-    @task(outlets=[Asset(AssetName.AI_DESCR_UPDATED_COLLECTION)])
+    @task
     def add_missing_ai_descr_collection() -> list[AddAiDescrItem]:
         return _add_missing_ai_descr('collection')
 
-    @task(outlets=[Asset(AssetName.AI_DESCR_UPDATED_COLLECTION)])
+    @task
     def add_missing_ai_descr_archive() -> list[AddAiDescrItem]:
         return _add_missing_ai_descr('archive')
 
-    @task(outlets=[Asset(AssetName.AI_DESCR_UPDATED_TRASH)])
+    @task
     def add_missing_ai_descr_trash() -> list[AddAiDescrItem]:
         return _add_missing_ai_descr('trash')
 
-    assert_ai_descr_helper_available >> add_missing_ai_descr_collection() >> add_missing_ai_descr_archive() >> add_missing_ai_descr_trash()
+    @task(outlets=[Asset(AssetName.CORE_AI_DESCR_UPDATED)])
+    def end():
+        pass
+
+    assert_ai_descr_helper_available >> add_missing_ai_descr_collection() >> add_missing_ai_descr_archive() >> add_missing_ai_descr_trash() >> end()
 
 
 add_missing_ai_descr()

@@ -1,5 +1,9 @@
-dag_default_args = {
+dag_args_noretry = {
     'retries': 0,
+}
+
+dag_args_retry = {
+    'retries': 10,
 }
 
 
@@ -34,18 +38,8 @@ class AssetName:
     NEW_FILES_IMPORTED = 'fdwh_new_files_imported'
     RAW_TREES_UPDATED = 'fdwh_raw_trees_updated'
     CORE_TREE_UPDATED = 'fdwh_core_tree_updated'
-
-    METADATA_HELPER_AVAIL = 'fdwh_metadata_helper_avail'
-    EXIF_TS_HELPER_AVAIL = 'fdwh_exif_ts_helper_avail'
-    AI_DESCR_HELPER_AVAIL = 'fdwh_ai_descr_helper_avail'
-
-    METADATA_UPDATED_ARCHIVE = 'fdwh_metadata_updated_archive'
-    METADATA_UPDATED_COLLECTION = 'fdwh_metadata_updated_collection'
-    METADATA_UPDATED_TRASH = 'fdwh_metadata_updated_trash'
-
-    AI_DESCR_UPDATED_ARCHIVE = 'fdwh_ai_descr_updated_archive'
-    AI_DESCR_UPDATED_COLLECTION = 'fdwh_ai_descr_updated_collection'
-    AI_DESCR_UPDATED_TRASH = 'fdwh_ai_descr_updated_trash'
+    CORE_METADATA_UPDATED = 'fdwh_core_metadata_updated'
+    CORE_AI_DESCR_UPDATED = 'fdwh_core_ai_description_updated'
 
 
 class ImportSettings:

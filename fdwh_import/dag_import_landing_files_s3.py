@@ -17,7 +17,7 @@ from fdwh_op_check_helper_available import CheckHelperAvailableOperator
 @dag(
     dag_id=DagName.IMPORT_LANDING_FILES_S3,
     max_active_runs=1,
-    default_args=dag_default_args,
+    default_args=dag_args_noretry,
     schedule=DeltaTriggerTimetable(timedelta(minutes=1)),
 )
 def dag():
@@ -34,8 +34,7 @@ def dag():
 
     assert_exif_helper_available = CheckHelperAvailableOperator(
         task_id="assert_exif_helper_available",
-        url=Variable.get(VariableName.EXIF_TS_ENDPOINT),
-        outlets=[Asset(AssetName.EXIF_TS_HELPER_AVAIL)])
+        url=Variable.get(VariableName.EXIF_TS_ENDPOINT))
 
     @task(outlets=[Asset(AssetName.NEW_FILES_IMPORTED)])
     def import_landing_files() -> list[str]:

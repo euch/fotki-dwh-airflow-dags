@@ -20,7 +20,7 @@ def delete_selected_collection_duplicates():
 
 
 with DAG(dag_id=DagName.RM_COLLECTION_DUPLICATES, max_active_runs=1, schedule=None,
-         default_args=dag_default_args):
+         default_args=dag_args_noretry):
     PythonOperator(
         task_id='delete_selected_collection_duplicates',
         python_callable=delete_selected_collection_duplicates)

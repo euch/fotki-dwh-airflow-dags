@@ -3,7 +3,7 @@ from airflow.sdk import Asset, DAG, Variable, TaskGroup
 from airflow.timetables.assets import AssetOrTimeSchedule
 from airflow.timetables.trigger import CronTriggerTimetable
 
-from fdwh_config import DagName, dag_default_args, AssetName, Conn, VariableName
+from fdwh_config import DagName, dag_args_noretry, AssetName, Conn, VariableName
 
 refresh_latest_collection_subdir_symlink_cmd = f'''
 
@@ -57,7 +57,7 @@ ln -s "$LATEST_DIR" "$SYMLINK_NAME"
 with DAG(
         dag_id=DagName.REFRESH_WORKCOPY_SYMLINKS,
         max_active_runs=1,
-        default_args=dag_default_args,
+        default_args=dag_args_noretry,
         schedule=AssetOrTimeSchedule(
             timetable=CronTriggerTimetable("0 0,6,12,18 * * *", timezone="UTC"),
             assets=(Asset(AssetName.NEW_FILES_IMPORTED))),
