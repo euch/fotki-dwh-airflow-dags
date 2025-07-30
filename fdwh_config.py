@@ -1,4 +1,3 @@
-
 dag_default_args = {
     'retries': 0,
 }
@@ -23,7 +22,6 @@ class DagName:
     FIND_MISSING_AI_DESCR = _prefix + 'find_missing_ai_descr'
     FIND_MISSING_METADATA = _prefix + 'find_missing_metadata'
     IMPORT_LANDING_FILES_S3 = _prefix + 'import_landing_files_s3'
-    IMPORT_LANDING_FILES_SMB = _prefix + 'import_landing_files_smb'
     PING_SERVICES = _prefix + 'ping_services'
     REFRESH_CORE_TREE = _prefix + 'refresh_core_tree'
     REFRESH_DATAMARTS = _prefix + 'refresh_datamarts'
@@ -45,7 +43,9 @@ class AssetName:
     METADATA_UPDATED_COLLECTION = 'fdwh_metadata_updated_collection'
     METADATA_UPDATED_TRASH = 'fdwh_metadata_updated_trash'
 
+    AI_DESCR_UPDATED_ARCHIVE = 'fdwh_ai_descr_updated_archive'
     AI_DESCR_UPDATED_COLLECTION = 'fdwh_ai_descr_updated_collection'
+    AI_DESCR_UPDATED_TRASH = 'fdwh_ai_descr_updated_trash'
 
 
 class ImportSettings:
