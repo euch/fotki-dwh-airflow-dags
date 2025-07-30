@@ -7,6 +7,7 @@ from airflow.sdk import Asset, Variable, dag, task
 
 from fdwh_config import *
 from fdwh_core_ai_descr.dto.add_ai_descr_item import AddAiDescrItem
+from fdwh_op_check_helper_available import CheckHelperAvailableOperator
 
 missing_ai_descr_select_sql = '''
 select 
@@ -27,7 +28,7 @@ join core.tree t on
 where
     ad.abs_filename is null
     and m.preview is not null
-    and t."type" = 'collection'
+    and t."type" = %s
 order by
     cl.tree_add_ts desc
 limit 5;
@@ -66,28 +67,49 @@ where
      ],
      )
 def add_missing_ai_descr():
+    assert_ai_descr_helper_available = CheckHelperAvailableOperator(
+        task_id='assert_ai_descr_helper_available',
+        url=Variable.get(VariableName.AI_DESCR_ENDPOINT),
+        outlets=[Asset(AssetName.AI_DESCR_HELPER_AVAIL)])
+
     @task(outlets=[Asset(AssetName.AI_DESCR_UPDATED_COLLECTION)])
     def add_missing_ai_descr_collection() -> list[AddAiDescrItem]:
-        pg_hook = PostgresHook.get_hook(Conn.POSTGRES)
-        res: list[AddAiDescrItem] = []
-        endpoint = Variable.get(VariableName.AI_DESCR_ENDPOINT)
-        while True:
-            for r in pg_hook.get_records(missing_ai_descr_select_sql):
-                abs_filename, preview, has_more_records = r[0], r[1], r[2]
-                response = requests.post(endpoint, files={'file': io.BytesIO(preview)})
-                if response.status_code == 200:
-                    captions = response.json()["description"]
-                    pg_hook.run(insert_ai_descr_sql, parameters=[abs_filename, captions, captions])
-                    pg_hook.run(update_log_sql, parameters=(datetime.now(), abs_filename))
-                    res.append(AddAiDescrItem(abs_filename))
-                else:
-                    print(f'Helper returned status code {response.status_code}')
-                    res.append(AddAiDescrItem(abs_filename, error=str(response)))
+        return _add_missing_ai_descr('collection')
 
-                if not has_more_records:
-                    return res
+    @task(outlets=[Asset(AssetName.AI_DESCR_UPDATED_COLLECTION)])
+    def add_missing_ai_descr_archive() -> list[AddAiDescrItem]:
+        return _add_missing_ai_descr('archive')
 
-    add_missing_ai_descr_collection()
+    @task(outlets=[Asset(AssetName.AI_DESCR_UPDATED_TRASH)])
+    def add_missing_ai_descr_trash() -> list[AddAiDescrItem]:
+        return _add_missing_ai_descr('trash')
+
+    assert_ai_descr_helper_available >> add_missing_ai_descr_collection() >> add_missing_ai_descr_archive() >> add_missing_ai_descr_trash()
 
 
 add_missing_ai_descr()
+
+
+def _add_missing_ai_descr(tree_type: str) -> list[AddAiDescrItem]:
+    pg_hook = PostgresHook.get_hook(Conn.POSTGRES)
+    res: list[AddAiDescrItem] = []
+    endpoint = Variable.get(VariableName.AI_DESCR_ENDPOINT)
+    while True:
+        records = pg_hook.get_records(missing_ai_descr_select_sql, parameters=[tree_type])
+        if not records:
+            return res
+
+        for r in records:
+            abs_filename, preview, has_more_records = r[0], r[1], r[2]
+            response = requests.post(endpoint, files={'file': io.BytesIO(preview)})
+            if response.status_code == 200:
+                captions = response.json()["description"]
+                pg_hook.run(insert_ai_descr_sql, parameters=[abs_filename, captions, captions])
+                pg_hook.run(update_log_sql, parameters=(datetime.now(), abs_filename))
+                res.append(AddAiDescrItem(abs_filename))
+            else:
+                print(f'Helper returned status code {response.status_code}')
+                res.append(AddAiDescrItem(abs_filename, error=str(response)))
+
+            if not has_more_records:
+                return res
