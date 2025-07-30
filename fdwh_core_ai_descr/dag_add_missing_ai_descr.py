@@ -2,11 +2,11 @@ import io
 from datetime import datetime
 
 import requests
+from airflow.exceptions import AirflowException
 from airflow.providers.postgres.hooks.postgres import PostgresHook
 from airflow.sdk import Asset, Variable, dag, task
 
 from fdwh_config import *
-from fdwh_core_ai_descr.dto.add_ai_descr_item import AddAiDescrItem
 from fdwh_op_check_helper_available import CheckHelperAvailableOperator
 
 schedule = [Asset(AssetName.CORE_METADATA_UPDATED)]
@@ -75,16 +75,16 @@ def add_missing_ai_descr():
         url=Variable.get(VariableName.AI_DESCR_ENDPOINT))
 
     @task
-    def add_missing_ai_descr_collection() -> list[AddAiDescrItem]:
-        return _add_missing_ai_descr('collection')
+    def add_missing_ai_descr_collection():
+        _add_missing_ai_descr('collection')
 
     @task
-    def add_missing_ai_descr_archive() -> list[AddAiDescrItem]:
-        return _add_missing_ai_descr('archive')
+    def add_missing_ai_descr_archive():
+        _add_missing_ai_descr('archive')
 
     @task
-    def add_missing_ai_descr_trash() -> list[AddAiDescrItem]:
-        return _add_missing_ai_descr('trash')
+    def add_missing_ai_descr_trash():
+        _add_missing_ai_descr('trash')
 
     @task(outlets=[Asset(AssetName.CORE_AI_DESCR_UPDATED)])
     def end():
@@ -96,26 +96,24 @@ def add_missing_ai_descr():
 add_missing_ai_descr()
 
 
-def _add_missing_ai_descr(tree_type: str) -> list[AddAiDescrItem]:
+def _add_missing_ai_descr(tree_type: str):
     pg_hook = PostgresHook.get_hook(Conn.POSTGRES)
-    res: list[AddAiDescrItem] = []
     endpoint = Variable.get(VariableName.AI_DESCR_ENDPOINT)
     while True:
         records = pg_hook.get_records(missing_ai_descr_select_sql, parameters=[tree_type])
         if not records:
-            return res
+            return
 
         for r in records:
             abs_filename, preview, has_more_records = r[0], r[1], r[2]
+            print(abs_filename)
             response = requests.post(endpoint, files={'file': io.BytesIO(preview)})
             if response.status_code == 200:
                 captions = response.json()["description"]
                 pg_hook.run(insert_ai_descr_sql, parameters=[abs_filename, captions, captions])
                 pg_hook.run(update_log_sql, parameters=(datetime.now(), abs_filename))
-                res.append(AddAiDescrItem(abs_filename))
             else:
-                print(f'Helper returned status code {response.status_code}')
-                res.append(AddAiDescrItem(abs_filename, error=str(response)))
+                raise AirflowException(f'Helper returned {response.status_code} for {abs_filename}')
 
             if not has_more_records:
-                return res
+                return
