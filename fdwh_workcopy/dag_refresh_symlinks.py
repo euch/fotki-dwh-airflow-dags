@@ -3,7 +3,15 @@ from airflow.sdk import Asset, DAG, Variable, TaskGroup
 from airflow.timetables.assets import AssetOrTimeSchedule
 from airflow.timetables.trigger import CronTriggerTimetable
 
-from fdwh_config import DagName, dag_args_noretry, AssetName, Conn, VariableName
+from fdwh_config import *
+
+schedule = AssetOrTimeSchedule(
+    timetable=CronTriggerTimetable("0 0,6,12,18 * * *", timezone="UTC"),
+    assets=(Asset(AssetName.NEW_FILES_IMPORTED)))
+tags = {
+    DagTag.SSH,
+    DagTag.FDWH_STORAGE_IO,
+}
 
 refresh_latest_collection_subdir_symlink_cmd = f'''
 
@@ -54,14 +62,8 @@ echo "Creating symlink $SYMLINK_NAME -> $LATEST_DIR"
 ln -s "$LATEST_DIR" "$SYMLINK_NAME"
 '''
 
-with DAG(
-        dag_id=DagName.REFRESH_WORKCOPY_SYMLINKS,
-        max_active_runs=1,
-        default_args=dag_args_noretry,
-        schedule=AssetOrTimeSchedule(
-            timetable=CronTriggerTimetable("0 0,6,12,18 * * *", timezone="UTC"),
-            assets=(Asset(AssetName.NEW_FILES_IMPORTED))),
-) as dag:
+with DAG(dag_id=DagName.REFRESH_WORKCOPY_SYMLINKS, max_active_runs=1, default_args=dag_args_noretry, schedule=schedule,
+         tags=tags) as dag:
     _ = SSHOperator(
         task_id="refresh_latest_collection_subdir_symlink",
         ssh_conn_id=Conn.SSH_STORAGE,

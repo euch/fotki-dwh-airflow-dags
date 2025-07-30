@@ -6,7 +6,7 @@ from airflow.sdk import Variable, DAG
 from fdwh_config import *
 
 
-def delete_selected_collection_duplicates():
+def _delete_selected_collection_duplicates():
     pg_hook = PostgresHook.get_hook(Conn.POSTGRES)
     smb_hook_collection = SambaHook.get_hook(Conn.SMB_COLLECTION)
     records = pg_hook.get_records(
@@ -19,8 +19,14 @@ def delete_selected_collection_duplicates():
         pg_hook.run(sql=f'''delete from duplicates.collection_duplicates where "hash" = '{hash}';''')
 
 
-with DAG(dag_id=DagName.RM_COLLECTION_DUPLICATES, max_active_runs=1, schedule=None,
-         default_args=dag_args_noretry):
-    PythonOperator(
+tags = {
+    DagTag.FDWH_DUPLICATES,
+    DagTag.FDWH_STORAGE_IO,
+    DagTag.PG,
+    DagTag.SMB,
+    DagTag.CLEANUP,
+}
+with DAG(dag_id=DagName.RM_COLLECTION_DUPLICATES, max_active_runs=1, default_args=dag_args_noretry, tags=tags):
+    _ = PythonOperator(
         task_id='delete_selected_collection_duplicates',
-        python_callable=delete_selected_collection_duplicates)
+        python_callable=_delete_selected_collection_duplicates)

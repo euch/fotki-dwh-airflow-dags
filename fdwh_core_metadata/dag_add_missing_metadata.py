@@ -13,8 +13,17 @@ from fdwh_config import *
 from fdwh_core_metadata.dto.add_metadata_item import AddMetadataItem
 from fdwh_op_check_helper_available import CheckHelperAvailableOperator
 
+schedule = [Asset(AssetName.CORE_TREE_UPDATED)]
+tags = {
+    DagTag.FDWH_CORE,
+    DagTag.FDWH_HELPERS,
+    DagTag.FDWH_STORAGE_IO,
+    DagTag.PG,
+    DagTag.SMB,
+}
 
-@dag(max_active_runs=1, default_args=dag_args_retry, schedule=[Asset(AssetName.CORE_TREE_UPDATED)])
+
+@dag(max_active_runs=1, default_args=dag_args_retry, schedule=schedule, tags=tags)
 def add_missing_metadata():
     assert_metadata_helper_available = CheckHelperAvailableOperator(
         task_id="assert_metadata_helper_available",

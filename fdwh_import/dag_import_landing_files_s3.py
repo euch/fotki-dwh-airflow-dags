@@ -13,13 +13,19 @@ from fdwh_import.utils.create_import_item import create_import_item
 from fdwh_import.utils.move_s3_import_item import move_s3_import_item
 from fdwh_op_check_helper_available import CheckHelperAvailableOperator
 
+schedule = DeltaTriggerTimetable(timedelta(minutes=1))
+tags = {
+    DagTag.FDWH_HELPERS,
+    DagTag.FDWH_STORAGE_IO,
+    DagTag.PG,
+    DagTag.S3,
+    DagTag.SMB,
+}
+
 
 @dag(
-    dag_id=DagName.IMPORT_LANDING_FILES_S3,
-    max_active_runs=1,
-    default_args=dag_args_noretry,
-    schedule=DeltaTriggerTimetable(timedelta(minutes=1)),
-)
+    dag_id=DagName.IMPORT_LANDING_FILES_S3, max_active_runs=1, default_args=dag_args_noretry, schedule=schedule,
+    tags=tags)
 def dag():
     wait_for_any_s3_file = S3KeySensor(
         task_id='wait_for_any_s3_file',
@@ -54,9 +60,10 @@ def dag():
             if 'Contents' in page:
                 for obj in page['Contents']:
                     import_item: ImportItem = create_import_item(s3=s3, pg_hook=pg_hook, landing_bucket_key=obj['Key'],
-                                                     landing_bucket=landing_bucket, exif_ts_endpoint=exif_ts_endpoint,
-                                                     unrecognized_bucket=unrecognized_bucket,
-                                                     duplicate_bucket=duplicate_bucket)
+                                                                 landing_bucket=landing_bucket,
+                                                                 exif_ts_endpoint=exif_ts_endpoint,
+                                                                 unrecognized_bucket=unrecognized_bucket,
+                                                                 duplicate_bucket=duplicate_bucket)
 
                     move_s3_import_item(s3=s3, smb_hook_storage=smb_hook_storage, import_item=import_item)
 

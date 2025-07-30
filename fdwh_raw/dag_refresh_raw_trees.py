@@ -10,6 +10,16 @@ from fdwh_raw.op_bulk_insert import BulkInsertOperator
 from fdwh_raw.op_create_remote_tree_csv import CreateRemoteTreeCsvOperator
 from fdwh_raw.op_smb_download import SmbDownloadOperator
 
+schedule = AssetOrTimeSchedule(
+    timetable=CronTriggerTimetable("0 0,6,12,18 * * *", timezone="UTC"),
+    assets=(Asset(AssetName.NEW_FILES_IMPORTED)))
+tags = {
+    DagTag.FDWH_RAW,
+    DagTag.FDWH_STORAGE_IO,
+    DagTag.PG,
+    DagTag.SMB,
+    DagTag.SSH,
+}
 
 @dataclass
 class RefreshRawConf:
@@ -44,14 +54,8 @@ REFRESH_RAW_CONFS: list[RefreshRawConf] = [
     )
 ]
 
-with DAG(
-        dag_id=DagName.REFRESH_RAW_TREES,
-        max_active_runs=1,
-        default_args=dag_args_noretry,
-        schedule=AssetOrTimeSchedule(
-            timetable=CronTriggerTimetable("0 0,6,12,18 * * *", timezone="UTC"),
-            assets=(Asset(AssetName.NEW_FILES_IMPORTED))),
-) as dag:
+with DAG(dag_id=DagName.REFRESH_RAW_TREES, max_active_runs=1, default_args=dag_args_noretry, schedule=schedule,
+         tags=tags) as dag:
     with TaskGroup(group_id="refresh_raw") as refresh_raw:
         for rrc in REFRESH_RAW_CONFS:
             with TaskGroup(group_id=rrc.group_id):

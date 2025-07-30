@@ -4,11 +4,13 @@ from airflow.sdk import Asset, DAG
 
 from fdwh_config import *
 
-with DAG(dag_id=DagName.REFRESH_CORE_TREE,
-         max_active_runs=1,
-         schedule=[Asset(AssetName.RAW_TREES_UPDATED)],
-         default_args=dag_args_noretry,
-         ):
+schedule = [Asset(AssetName.RAW_TREES_UPDATED)]
+tags = {
+    DagTag.FDWH_CORE,
+    DagTag.PG,
+}
+with DAG(dag_id=DagName.REFRESH_CORE_TREE, max_active_runs=1, schedule=schedule, default_args=dag_args_noretry,
+         tags=tags):
     SQLExecuteQueryOperator(
         task_id='tree_delete_old',
         conn_id=Conn.POSTGRES,

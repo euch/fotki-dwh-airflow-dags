@@ -3,10 +3,15 @@ from airflow.sdk import dag, Asset
 
 from fdwh_config import *
 
+schedule = (Asset(AssetName.CORE_METADATA_UPDATED) | Asset(AssetName.CORE_AI_DESCR_UPDATED))
+tags = {
+    DagTag.FDWH_MARTS,
+    DagTag.PG,
+}
 
-@dag(dag_display_name=DagName.REFRESH_DATAMARTS,
-     schedule=(Asset(AssetName.CORE_METADATA_UPDATED) | Asset(AssetName.CORE_AI_DESCR_UPDATED)),
-     default_args=dag_args_retry, max_active_runs=1)
+
+@dag(dag_display_name=DagName.REFRESH_DATAMARTS, schedule=schedule, tags=tags, default_args=dag_args_retry,
+     max_active_runs=1)
 def update_dm():
     SQLExecuteQueryOperator(
         task_id='dm_counts_insert',

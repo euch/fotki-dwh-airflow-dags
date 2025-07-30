@@ -9,6 +9,14 @@ from fdwh_config import *
 from fdwh_core_ai_descr.dto.add_ai_descr_item import AddAiDescrItem
 from fdwh_op_check_helper_available import CheckHelperAvailableOperator
 
+schedule = [Asset(AssetName.CORE_METADATA_UPDATED)]
+tags = {
+    DagTag.FDWH_CORE,
+    DagTag.FDWH_HELPERS,
+    DagTag.PG,
+    DagTag.SMB,
+}
+
 missing_ai_descr_select_sql = '''
 select 
     m.abs_filename,
@@ -59,7 +67,7 @@ where
 '''
 
 
-@dag(max_active_runs=1, default_args=dag_args_retry, schedule=[Asset(AssetName.CORE_METADATA_UPDATED)])
+@dag(max_active_runs=1, default_args=dag_args_retry, schedule=schedule, tags=tags)
 def add_missing_ai_descr():
     assert_ai_descr_helper_available = CheckHelperAvailableOperator(
         task_id='assert_ai_descr_helper_available',

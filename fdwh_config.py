@@ -34,6 +34,26 @@ class DagName:
     RM_COLLECTION_DUPLICATES = _prefix + 'rm_collection_duplicates'
 
 
+class DagTag:
+    CLEANUP = 'cleanup'
+    MONITORING = 'monitoring'
+    PG = 'pg'
+    S3 = 's3'
+    SMB = 'smb'
+    SSH = 'ssh'
+
+    _prefix = 'fdwh_'
+    FDWH_RAW = _prefix + 'raw'
+    FDWH_CORE = _prefix + 'core'
+    FDWH_MARTS = _prefix + 'marts'
+
+    FDWH_DUPLICATES = _prefix + 'duplicates'
+    FDWH_HELPERS = _prefix + 'helpers'
+    FDWH_STORAGE_IO = _prefix + 'storage_io'
+
+
+
+
 class AssetName:
     NEW_FILES_IMPORTED = 'fdwh_new_files_imported'
     RAW_TREES_UPDATED = 'fdwh_raw_trees_updated'
