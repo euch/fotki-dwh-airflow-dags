@@ -8,6 +8,7 @@ from airflow.exceptions import AirflowException
 from airflow.providers.postgres.hooks.postgres import PostgresHook
 from airflow.providers.samba.hooks.samba import SambaHook
 from airflow.sdk import Asset, dag, task, Variable
+from airflow.utils.trigger_rule import TriggerRule
 
 from fdwh_config import *
 from fdwh_op_check_helper_available import CheckHelperAvailableOperator
@@ -63,22 +64,39 @@ add_missing_metadata()
 
 _find_missing_sql = '''
 select
-    t.abs_filename
+	t.abs_filename
 from
-    core.tree t
-where not exists (
-    select 1 from core.metadata m
-    where m.abs_filename = t.abs_filename
-)
-and t.size < 1000000000 -- up to 1 GB limit
-and t."type" = %s;
+	core.tree t
+left join core.metadata m on
+	m.abs_filename = t.abs_filename
+where
+	t.size < 1000000000
+	-- up to 1 GB limit
+	and t.type = %s
+	and (m.abs_filename is null --metadata does not exist 
+		-- or metadata exist, but has empty values 
+		or m.hash is null
+		or m.exif is null
+		or m.preview is null
+	)
+;
 '''
 
 _insert_metadata_sql = '''
-insert into	
-    core.metadata 
+insert
+	into core.metadata 
     (abs_filename, hash, exif, preview)
 values (%s,%s,%s,%s)
+on conflict (abs_filename) do
+update
+set
+	hash = EXCLUDED.hash,
+	exif = EXCLUDED.exif,
+	preview = EXCLUDED.preview
+where
+	core.metadata.hash is distinct from	EXCLUDED.hash
+	or core.metadata.exif::text is distinct from EXCLUDED.exif::text
+	or core.metadata.preview is distinct from EXCLUDED.preview;
 '''
 
 _update_log_sql = """
