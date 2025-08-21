@@ -41,7 +41,6 @@ where
     ad.abs_filename is null
     and m.preview is not null
     and t."type" = %s
-    and t.size < 100000000 -- up to 100 MB limit
 order by
     cl.tree_add_ts desc
 limit 5;
@@ -115,13 +114,16 @@ def _add_missing_ai_descr(tree_type: str):
         for r in records:
             abs_filename, preview, has_more_records = r[0], r[1], r[2]
             print(abs_filename)
-            response = requests.post(endpoint, files={'file': io.BytesIO(preview)})
-            if response.status_code == 200:
-                captions = response.json()["description"]
-                pg_hook.run(insert_ai_descr_sql, parameters=[abs_filename, captions, captions])
-                pg_hook.run(update_log_sql, parameters=(datetime.now(), abs_filename))
+            if len(preview) > 1000:
+                response = requests.post(endpoint, files={'file': io.BytesIO(preview)})
+                if response.status_code == 200:
+                    captions = response.json()["description"]
+                    pg_hook.run(insert_ai_descr_sql, parameters=[abs_filename, captions, captions])
+                    pg_hook.run(update_log_sql, parameters=(datetime.now(), abs_filename))
+                else:
+                    raise AirflowException(f'Helper returned {response.status_code} for {abs_filename}')
             else:
-                raise AirflowException(f'Helper returned {response.status_code} for {abs_filename}')
+                print("Skipping: Preview is broken")
 
             if not has_more_records:
                 return
