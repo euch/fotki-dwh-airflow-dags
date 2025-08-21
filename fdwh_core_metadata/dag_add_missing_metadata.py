@@ -8,7 +8,6 @@ from airflow.exceptions import AirflowException
 from airflow.providers.postgres.hooks.postgres import PostgresHook
 from airflow.providers.samba.hooks.samba import SambaHook
 from airflow.sdk import Asset, dag, task, Variable
-from airflow.utils.trigger_rule import TriggerRule
 
 from fdwh_config import *
 from fdwh_op_check_helper_available import CheckHelperAvailableOperator
@@ -57,7 +56,11 @@ def add_missing_metadata():
     def end():
         pass
 
-    assert_metadata_helper_available >> add_missing_metadata_collection() >> add_missing_metadata_trash() >> add_missing_metadata_archive() >> end()
+    (assert_metadata_helper_available >> [
+        add_missing_metadata_collection(),
+        add_missing_metadata_trash(),
+        add_missing_metadata_archive()
+    ] >> end())
 
 
 add_missing_metadata()
