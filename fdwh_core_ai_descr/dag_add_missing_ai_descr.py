@@ -1,15 +1,19 @@
 import io
-from datetime import datetime
+from datetime import datetime, timedelta
 
 import requests
 from airflow.exceptions import AirflowException
 from airflow.providers.postgres.hooks.postgres import PostgresHook
 from airflow.sdk import Asset, Variable, dag, task
+from airflow.timetables.assets import AssetOrTimeSchedule
+from airflow.timetables.trigger import DeltaTriggerTimetable
 
 from fdwh_config import *
 from fdwh_op_check_helper_available import CheckHelperAvailableOperator
 
-schedule = [Asset(AssetName.CORE_METADATA_UPDATED)]
+schedule = AssetOrTimeSchedule(
+    timetable=DeltaTriggerTimetable(timedelta(hours=1)),
+    assets=(Asset(AssetName.NEW_FILES_IMPORTED)))
 tags = {
     DagTag.FDWH_CORE,
     DagTag.FDWH_HELPERS,
@@ -90,7 +94,11 @@ def add_missing_ai_descr():
     def end():
         pass
 
-    assert_ai_descr_helper_available >> add_missing_ai_descr_collection() >> add_missing_ai_descr_trash() >> add_missing_ai_descr_archive() >> end()
+    assert_ai_descr_helper_available >> [
+        add_missing_ai_descr_collection(),
+        add_missing_ai_descr_trash(),
+        add_missing_ai_descr_archive()
+    ] >> end()
 
 
 add_missing_ai_descr()
