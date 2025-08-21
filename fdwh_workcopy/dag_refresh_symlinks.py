@@ -1,12 +1,14 @@
+from datetime import timedelta
+
 from airflow.providers.ssh.operators.ssh import SSHOperator
 from airflow.sdk import Asset, DAG, Variable, TaskGroup
 from airflow.timetables.assets import AssetOrTimeSchedule
-from airflow.timetables.trigger import CronTriggerTimetable
+from airflow.timetables.trigger import DeltaTriggerTimetable
 
 from fdwh_config import *
 
 schedule = AssetOrTimeSchedule(
-    timetable=CronTriggerTimetable("0 0,6,12,18 * * *", timezone="UTC"),
+    timetable=DeltaTriggerTimetable(timedelta(hours=1)),
     assets=(Asset(AssetName.NEW_FILES_IMPORTED)))
 tags = {
     DagTag.SSH,
