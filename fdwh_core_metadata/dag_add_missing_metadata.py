@@ -30,27 +30,15 @@ def add_missing_metadata():
 
     @task
     def add_missing_metadata_collection():
-        pg_hook = PostgresHook.get_hook(Conn.POSTGRES)
-        smb_hook = SambaHook.get_hook(Conn.SMB_COLLECTION)
-        rp = Variable.get(VariableName.RP_COLLECTION)
-        for abs_filename in _find_missing(pg_hook, 'collection'):
-            _add_missing(smb_hook, pg_hook, rp, abs_filename)
+        return _add_missing_metadata(Conn.SMB_COLLECTION, VariableName.RP_COLLECTION, 'collection')
 
     @task
     def add_missing_metadata_trash():
-        pg_hook = PostgresHook.get_hook(Conn.POSTGRES)
-        smb_hook = SambaHook.get_hook(Conn.SMB_TRASH)
-        rp = Variable.get(VariableName.RP_TRASH)
-        for abs_filename in _find_missing(pg_hook, 'trash'):
-            _add_missing(smb_hook, pg_hook, rp, abs_filename)
+        return _add_missing_metadata(Conn.SMB_TRASH, VariableName.RP_TRASH, 'trash')
 
     @task
     def add_missing_metadata_archive():
-        pg_hook = PostgresHook.get_hook(Conn.POSTGRES)
-        smb_hook = SambaHook.get_hook(Conn.SMB_ARCHIVE)
-        rp = Variable.get(VariableName.RP_ARCHIVE)
-        for abs_filename in _find_missing(pg_hook, 'archive'):
-            _add_missing(smb_hook, pg_hook, rp, abs_filename)
+        return _add_missing_metadata(Conn.SMB_ARCHIVE, VariableName.RP_ARCHIVE, 'archive')
 
     @task(outlets=[Asset[AssetName.CORE_METADATA_UPDATED]])
     def end():
@@ -65,13 +53,19 @@ def add_missing_metadata():
 
 add_missing_metadata()
 
-_find_missing_sql = '''
+missing_metadata_select_sql = '''
 select
-	t.abs_filename
+	t.abs_filename,
+    CASE 
+        WHEN COUNT(*) OVER() >= 5 THEN true 
+        ELSE false 
+    END as has_more_pages
 from
 	core.tree t
 left join core.metadata m on
 	m.abs_filename = t.abs_filename
+join log.core_log cl on
+    cl.abs_filename = m.abs_filename 	
 where
 	t.size < 1000000000
 	-- up to 1 GB limit
@@ -82,6 +76,10 @@ where
 		or m.exif is null
 		or m.preview is null
 	)
+	and t.abs_filename not in %s
+order by
+    cl.tree_add_ts asc
+limit 5
 ;
 '''
 
@@ -113,27 +111,47 @@ where
 """
 
 
-def _find_missing(pg_hook, t_type) -> list[str]:
-    return list(map(lambda r: r[0], pg_hook.get_records(sql=_find_missing_sql, parameters=[t_type])))
 
+def _add_missing_metadata(smb_conn_name: str, remote_root_path_varname: str, tree_type: str):
+    pg_hook = PostgresHook.get_hook(Conn.POSTGRES)
+    smb_hook = SambaHook.get_hook(smb_conn_name)
+    remote_root_path = Variable.get(remote_root_path_varname)
+    endpoint = Variable.get(VariableName.METADATA_ENDPOINT)
+    corrupt_abs_filenames = {''}
 
-def _add_missing(smb_hook, pg_hook, remote_path: str, abs_filename: str):
-    print(f'\n\nadding missing metadata for abs_filename="{abs_filename}"...\n')
-    rel_filename = abs_filename.replace(remote_path, '')
-    print(f'looking for file {rel_filename}')
-    with smb_hook.open_file(path=rel_filename, mode='rb') as file:
-        files = {'file': file}
-        response = requests.post(Variable.get(VariableName.METADATA_ENDPOINT), files=files)
-        print(f'Metadata endpoint responded with code {response.status_code}')
-        if response.status_code == 200:
-            resp = response.json()
-            parameters = [
-                abs_filename,
-                resp['hash'],
-                None if resp['exif'] is None else json.dumps(resp['exif']),
-                None if resp['preview'] is None else psql.Binary(base64.b64decode(resp['preview']))
-            ]
-            pg_hook.run(_insert_metadata_sql, parameters=parameters)
-            pg_hook.run(_update_log_sql, parameters=(datetime.now(), resp['hash'], abs_filename))
-        else:
-            raise AirflowException(f'Helper returned {response.status_code} for {abs_filename}')
+    def result_dict() -> dict:
+        return {
+            'corrupted_files': ','.join(corrupt_abs_filenames)
+        }
+    while True:
+        records = pg_hook.get_records(missing_metadata_select_sql, parameters=[tree_type, tuple(corrupt_abs_filenames)])
+
+        if not records:
+            return result_dict()
+
+        for r in records:
+            abs_filename, has_more_records = r[0], r[1]
+            rel_filename = abs_filename.replace(remote_root_path, '')
+
+            with smb_hook.open_file(path=rel_filename, mode='rb', share_access='r') as file:
+                response = requests.post(endpoint, files={'file': file}, data={'filename': abs_filename})
+                print(f'Metadata endpoint responded with code {response.status_code}')
+
+                if response.status_code == 200:
+                    resp = response.json()
+
+                    exif = None if resp['exif'] is None else json.dumps(resp['exif'])
+                    preview = None if resp['preview'] is None else psql.Binary(base64.b64decode(resp['preview']))
+
+                    if not exif or not preview:
+                        corrupt_abs_filenames.add(abs_filename)
+
+                    pg_hook.run(_insert_metadata_sql, parameters=[abs_filename, resp['hash'], exif, preview])
+                    pg_hook.run(_update_log_sql, parameters=(datetime.now(), resp['hash'], abs_filename))
+
+                else:
+                    raise AirflowException(
+                        f'Helper returned {response.status_code} for {abs_filename}: {response.text}')
+
+            if not has_more_records:
+                return result_dict()
