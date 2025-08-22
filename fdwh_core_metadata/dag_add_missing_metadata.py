@@ -111,7 +111,6 @@ where
 """
 
 
-
 def _add_missing_metadata(smb_conn_name: str, remote_root_path_varname: str, tree_type: str):
     pg_hook = PostgresHook.get_hook(Conn.POSTGRES)
     smb_hook = SambaHook.get_hook(smb_conn_name)
@@ -123,6 +122,7 @@ def _add_missing_metadata(smb_conn_name: str, remote_root_path_varname: str, tre
         return {
             'corrupted_files': ','.join(corrupt_abs_filenames)
         }
+
     while True:
         records = pg_hook.get_records(missing_metadata_select_sql, parameters=[tree_type, tuple(corrupt_abs_filenames)])
 
