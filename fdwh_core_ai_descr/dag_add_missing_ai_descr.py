@@ -80,15 +80,15 @@ def add_missing_ai_descr():
 
     @task
     def add_missing_ai_descr_collection():
-        _add_missing_ai_descr('collection')
+        return _add_missing_ai_descr('collection')
 
     @task
     def add_missing_ai_descr_archive():
-        _add_missing_ai_descr('archive')
+        return _add_missing_ai_descr('archive')
 
     @task
     def add_missing_ai_descr_trash():
-        _add_missing_ai_descr('trash')
+        return _add_missing_ai_descr('trash')
 
     @task(outlets=[Asset(AssetName.CORE_AI_DESCR_UPDATED)])
     def end():
