@@ -119,7 +119,7 @@ def _add_missing_ai_descr(tree_type: str):
         records = pg_hook.get_records(_missing_ai_descr_select_sql,
                                       parameters=[tree_type, tuple(broken_previews_abs_filenames)])
         if not records:
-            result_dict()
+            return result_dict()
 
         for r in records:
             abs_filename, preview, has_more_records = r[0], r[1], r[2]
@@ -137,4 +137,4 @@ def _add_missing_ai_descr(tree_type: str):
                 print("Skipping: Preview is broken")
 
             if not has_more_records:
-                result_dict()
+                return result_dict()
