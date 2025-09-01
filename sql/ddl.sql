@@ -126,6 +126,7 @@ AS SELECT (string_to_array(abs_filename::text, '/'::text, NULL::text))[5] AS col
 CREATE OR REPLACE VIEW dm.col_images
 AS SELECT t.abs_filename,
     regexp_replace(t.abs_filename::text, '^.*/(.*)\..*'::text, '\1'::text) AS short_filename,
+    left(t.abs_filename, length(t.abs_filename) - position('/' in reverse(t.abs_filename))) as directory,
     m.preview,
     ad.caption_vit_gpt2 AS caption
    FROM core.tree t
@@ -140,10 +141,11 @@ AS SELECT t.abs_filename,
 CREATE OR REPLACE VIEW dm.col_images_birds
 AS SELECT abs_filename,
     short_filename,
+    directory,
     preview,
     caption
    FROM dm.col_images c
-  WHERE caption::text ~~* '%bird%'::text;
+  WHERE caption::text ~~* '%bird%'::text OR abs_filename::text ~~* '%птиц%'::text;
 
 
 -- dm.col_noexif source
