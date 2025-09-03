@@ -125,7 +125,7 @@ AS SELECT (string_to_array(abs_filename::text, '/'::text, NULL::text))[5] AS col
 
 CREATE OR REPLACE VIEW dm.col_images
 AS SELECT t.abs_filename,
-    regexp_replace(t.abs_filename::text, '^.*/(.*)\..*'::text, '\1'::text) AS short_filename,
+    split_part(t.abs_filename::text, '/'::text, '-1'::integer) AS short_filename,
     left(t.abs_filename, length(t.abs_filename) - position('/' in reverse(t.abs_filename))) as directory,
     m.preview,
     ad.caption_vit_gpt2 AS caption
