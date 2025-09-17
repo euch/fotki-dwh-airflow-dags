@@ -1,12 +1,9 @@
 import re
-from datetime import timedelta
 
 from airflow.models import Variable
 from airflow.providers.postgres.hooks.postgres import PostgresHook
 from airflow.providers.ssh.hooks.ssh import SSHHook
 from airflow.sdk import Asset, dag, task
-from airflow.timetables.assets import AssetOrTimeSchedule
-from airflow.timetables.trigger import DeltaTriggerTimetable, CronTriggerTimetable
 
 from fdwh_config import *
 
@@ -37,6 +34,27 @@ def _find_rightmost_date(path: str):
     # Return the match with the smallest distance from the end (rightmost)
     rightmost_match = min(matches, key=lambda x: x['distance_from_end'])
     return rightmost_match['date']
+
+
+def _exec_remote_cmd(cmd):
+    try:
+        ssh_hook = SSHHook(ssh_conn_id=Conn.SSH_STORAGE)
+        ssh_client = ssh_hook.get_conn()
+        stdin, stdout, stderr = ssh_client.exec_command(cmd)
+        # Read the output
+        remote_output = stdout.read().decode('utf-8')
+        remote_error = stderr.read().decode('utf-8')
+        print(f"Command executed: {cmd}")
+        print(f"Remote Output:\n{remote_output}")
+        if remote_error:
+            print(f"Remote Error:\n{remote_error}")
+    except Exception as e:
+        print(f"An error occurred: {e}")
+    finally:
+        # 3. Close the Connection
+        if 'ssh_client' in locals() and ssh_client:
+            ssh_client.close()
+            print("SSH connection closed.")
 
 
 schedule = (Asset(AssetName.CORE_AI_DESCR_UPDATED) | Asset(AssetName.CORE_TREE_UPDATED))
@@ -72,29 +90,18 @@ def fdwh_refresh_flat_symlinks_birds():
 
     @task
     def exec_remote_cmd(cmds: list[str]):
-        try:
-            ssh_hook = SSHHook(ssh_conn_id=Conn.SSH_STORAGE)
-            ssh_client = ssh_hook.get_conn()
-            cmd = "\n".join(cmds)
-            stdin, stdout, stderr = ssh_client.exec_command(cmd)
-            # Read the output
-            remote_output = stdout.read().decode('utf-8')
-            remote_error = stderr.read().decode('utf-8')
-            print(f"Command executed: {cmd}")
-            print(f"Remote Output:\n{remote_output}")
-            if remote_error:
-                print(f"Remote Error:\n{remote_error}")
-        except Exception as e:
-            print(f"An error occurred: {e}")
-        finally:
-            # 3. Close the Connection
-            if 'ssh_client' in locals() and ssh_client:
-                ssh_client.close()
-                print("SSH connection closed.")
+        _exec_remote_cmd("\n".join(cmds))
+
+    @task
+    def rm_dead_symlinks():
+        cmd = f'cd /"{Variable.get(VariableName.RP_WORKCOPY)}"/плоские_птицы/ ' + '&&' + ' find . -type l ! -exec test -e {} \; -print -delete'
+        _exec_remote_cmd(cmd)
 
     _bird_dirs = find_bird_dirs()
     _commands = mk_remote_cmd.expand(dir=_bird_dirs)
     exec_remote_cmd.expand(cmds=_commands)
+
+    rm_dead_symlinks()
 
 
 fdwh_refresh_flat_symlinks_birds()
