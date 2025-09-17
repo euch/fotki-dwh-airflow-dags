@@ -60,7 +60,7 @@ class AssetName:
     CORE_TREE_UPDATED = 'fdwh_core_tree_updated'
     CORE_METADATA_UPDATED = 'fdwh_core_metadata_updated'
     CORE_AI_DESCR_UPDATED = 'fdwh_core_ai_description_updated'
-
+    AI_HELPER_AVAILABLE = 'fdwh_ai_helper_available'
 
 class ImportSettings:
     COMPANION_FILE_EXTENSIONS = ['.mov', '.MOV', '.mp4', '.MP4', ]
