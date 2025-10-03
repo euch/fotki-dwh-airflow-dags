@@ -36,7 +36,7 @@ def _find_rightmost_date(path: str):
     return rightmost_match['date']
 
 
-def _exec_remote_cmd(cmd):
+def _exec_remote_cmd(cmd: str):
     try:
         ssh_hook = SSHHook(ssh_conn_id=Conn.SSH_STORAGE)
         ssh_client = ssh_hook.get_conn()
@@ -64,7 +64,7 @@ tags = {
 }
 
 
-@dag(max_active_runs=1, default_args=dag_args_retry, schedule=schedule, tags=tags)
+@dag(max_active_runs=1, default_args=dag_args_retry, schedule=schedule, tags=tags, max_active_tasks=1)
 def fdwh_refresh_flat_symlinks_birds():
     @task
     def find_bird_dirs() -> list[(str, str)]:
@@ -74,32 +74,27 @@ def fdwh_refresh_flat_symlinks_birds():
         return list(map(lambda row: row[0], records))
 
     @task
-    def mk_remote_cmd(dir: str) -> list[str]:
-        result = []
+    def create_symlink(dir: str) -> None:
+        cmds = []
         pg_hook = PostgresHook.get_hook(Conn.POSTGRES)
         sql = 'select abs_filename, short_filename from dm.col_images_birds where directory = %s'
         for row in pg_hook.get_records(sql, parameters=[dir]):
             abs_filename, short_filename = row[0], row[1]
             timestamp = _find_rightmost_date(abs_filename)
             if timestamp:
-                cmd = f'ln -s "{abs_filename}" /"{Variable.get(VariableName.RP_WORKCOPY)}"/плоские_птицы/"{timestamp}"_"{short_filename}" ; '
-                result.append(cmd)
+                cmds.append(f'ln -s "{abs_filename}" /"{Variable.get(VariableName.RP_WORKCOPY)}"/плоские_птицы/"{timestamp}"_"{short_filename}"')
             else:
                 print(f"timestamp not found in {abs_filename}")
-        return result
+        _exec_remote_cmd('; '.join(cmds))
+
 
     @task
-    def exec_remote_cmd(cmds: list[str]):
-        _exec_remote_cmd("\n".join(cmds))
-
-    @task
-    def rm_dead_symlinks():
+    def rm_dead_symlinks() -> None:
         cmd = f'cd /"{Variable.get(VariableName.RP_WORKCOPY)}"/плоские_птицы/ ' + '&&' + ' find . -type l ! -exec test -e {} \; -print -delete'
         _exec_remote_cmd(cmd)
 
     _bird_dirs = find_bird_dirs()
-    _commands = mk_remote_cmd.expand(dir=_bird_dirs)
-    exec_remote_cmd.expand(cmds=_commands)
+    _commands = create_symlink.expand(dir=_bird_dirs)
 
     rm_dead_symlinks()
 
