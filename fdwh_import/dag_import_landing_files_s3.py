@@ -64,8 +64,11 @@ def dag():
         for page in s3.get_paginator('list_objects_v2').paginate(Bucket=landing_bucket):
             if 'Contents' in page:
                 for obj in page['Contents']:
-                    import_item: ImportItem = create_import_item(s3=s3, pg_hook=pg_hook, landing_bucket_key=obj['Key'],
+                    import_item: ImportItem = create_import_item(s3=s3,
+                                                                 pg_hook=pg_hook,
+                                                                 landing_bucket_key=obj['Key'],
                                                                  landing_bucket=landing_bucket,
+                                                                 import_max_file_size=import_max_file_size,
                                                                  exif_ts_endpoint=exif_ts_endpoint,
                                                                  unsupported_bucket=unsupported_bucket,
                                                                  duplicate_bucket=duplicate_bucket)

@@ -3,27 +3,20 @@ from datetime import datetime
 from io import BytesIO
 
 import requests
-from airflow.providers.amazon.aws.hooks.s3 import S3Hook
 
 from fdwh_config import ImportSettings
-from fdwh_import.utils.get_s3_object_bytes import get_s3_object_bytes
 
 
-def get_subfolder(s3: S3Hook, key: str, bucket: str, exif_ts_endpoint: str) -> (str | None, BytesIO | None):
-    import_subfolder: str | None = get_subfolder_from_prefix(key)
-    if import_subfolder:
-        return import_subfolder, None
+def get_subfolder(path: str, obj_bytes: BytesIO, exif_ts_endpoint: str) -> str | None:
+    sfp: str | None = get_subfolder_from_path(path)
+    if sfp:
+        return sfp
     else:
-        obj_bytes: BytesIO = get_s3_object_bytes(s3, key, bucket)
-        import_subfolder: str | None = get_subfolder_from_exif(obj_bytes, exif_ts_endpoint)
-        if import_subfolder:
-            return import_subfolder, obj_bytes
-        else:
-            return None, obj_bytes
+        return get_subfolder_from_exif(obj_bytes, exif_ts_endpoint)
 
 
-def get_subfolder_from_prefix(key: str) -> str | None:
-    s = key.split("/")
+def get_subfolder_from_path(path: str) -> str | None:
+    s = path.split("/")
     if len(s) > 0:
         subfolder = s[0]
         if validate_subfolder_fmt(subfolder):
