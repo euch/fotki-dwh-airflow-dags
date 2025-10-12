@@ -1,6 +1,7 @@
 from datetime import datetime, UTC
 from io import BytesIO
 
+from airflow.providers.amazon.aws.hooks.s3 import S3Hook
 from airflow.providers.postgres.hooks.postgres import PostgresHook
 
 from fdwh_import.dto.import_item import GoodImportItem, ImportItem, UnsupportedImportItem, DuplicateImportItem
@@ -11,7 +12,7 @@ from fdwh_import.utils.run_duplicate_check import run_duplicate_check
 Y_D_M_H_M = "%Y-%m-%d_%H%M"
 
 
-def create_import_item(s3, pg_hook: PostgresHook, exif_ts_endpoint: str, landing_bucket_key: str, landing_bucket: str,
+def create_import_item(s3: S3Hook, pg_hook: PostgresHook, exif_ts_endpoint: str, landing_bucket_key: str, landing_bucket: str,
                        unsupported_bucket: str, duplicate_bucket: str) -> (ImportItem, BytesIO | None):
 
 

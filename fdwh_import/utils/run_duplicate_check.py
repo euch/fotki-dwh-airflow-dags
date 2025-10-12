@@ -1,12 +1,13 @@
 import hashlib
 from io import BytesIO
 
+from airflow.providers.amazon.aws.hooks.s3 import S3Hook
 from airflow.providers.postgres.hooks.postgres import PostgresHook
 
 from fdwh_import.utils.get_s3_object_bytes import get_s3_object_bytes
 
 
-def run_duplicate_check(s3, landing_bucket_key: str, landing_bucket: str,
+def run_duplicate_check(s3: S3Hook, landing_bucket_key: str, landing_bucket: str,
                         preloaded_obj_bytes: BytesIO | None, pg_hook: PostgresHook) -> (bool, BytesIO):
     md5_hash, obj_bytes = get_md5_hash(s3, landing_bucket_key, landing_bucket, preloaded_obj_bytes)
     duplicate = hash_already_used(md5_hash, pg_hook)

@@ -49,7 +49,7 @@ def dag():
     @task()
     def import_landing_files() -> list[str]:
 
-        s3 = S3Hook(aws_conn_id=Conn.MINIO).get_client_type('s3')
+        s3: S3Hook = S3Hook(aws_conn_id=Conn.MINIO).get_client_type('s3')
         smb_hook_storage = SambaHook.get_hook(Conn.SMB_COLLECTION)
         pg_hook = PostgresHook.get_hook(Conn.POSTGRES)
 
