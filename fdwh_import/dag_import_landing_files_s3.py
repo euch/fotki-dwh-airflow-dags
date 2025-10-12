@@ -53,9 +53,10 @@ def dag():
         smb_hook_storage = SambaHook.get_hook(Conn.SMB_COLLECTION)
         pg_hook = PostgresHook.get_hook(Conn.POSTGRES)
 
+        import_max_file_size = Variable.get(VariableName.IMPORT_MAX_FILE_SIZE)
         landing_bucket = Variable.get(VariableName.BUCKET_LANDING)
         exif_ts_endpoint = Variable.get(VariableName.EXIF_TS_ENDPOINT)
-        unrecognized_bucket = Variable.get(VariableName.BUCKET_REJECTED_UNSUPPORTED)
+        unsupported_bucket = Variable.get(VariableName.BUCKET_REJECTED_UNSUPPORTED)
         duplicate_bucket = Variable.get(VariableName.BUCKET_REJECTED_DUPLICATES)
 
         imported_storage_paths: list[str] = []
@@ -66,7 +67,7 @@ def dag():
                     import_item: ImportItem = create_import_item(s3=s3, pg_hook=pg_hook, landing_bucket_key=obj['Key'],
                                                                  landing_bucket=landing_bucket,
                                                                  exif_ts_endpoint=exif_ts_endpoint,
-                                                                 unrecognized_bucket=unrecognized_bucket,
+                                                                 unsupported_bucket=unsupported_bucket,
                                                                  duplicate_bucket=duplicate_bucket)
 
                     move_s3_import_item(s3=s3, smb_hook_storage=smb_hook_storage, import_item=import_item)

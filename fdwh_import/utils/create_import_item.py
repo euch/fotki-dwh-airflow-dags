@@ -3,7 +3,7 @@ from io import BytesIO
 
 from airflow.providers.postgres.hooks.postgres import PostgresHook
 
-from fdwh_import.dto.import_item import GoodImportItem, ImportItem, UnrecognizedImportItem, DuplicateImportItem
+from fdwh_import.dto.import_item import GoodImportItem, ImportItem, UnsupportedImportItem, DuplicateImportItem
 from fdwh_import.utils.get_s3_object_bytes import get_s3_object_bytes
 from fdwh_import.utils.get_subfolder import get_subfolder
 from fdwh_import.utils.run_duplicate_check import run_duplicate_check
@@ -12,17 +12,20 @@ Y_D_M_H_M = "%Y-%m-%d_%H%M"
 
 
 def create_import_item(s3, pg_hook: PostgresHook, exif_ts_endpoint: str, landing_bucket_key: str, landing_bucket: str,
-                       unrecognized_bucket: str, duplicate_bucket: str) -> (ImportItem, BytesIO | None):
+                       unsupported_bucket: str, duplicate_bucket: str) -> (ImportItem, BytesIO | None):
+
+
+
     subfolder, preloaded_obj_bytes = get_subfolder(s3, landing_bucket_key, landing_bucket, exif_ts_endpoint)
     proc_datetime = datetime.now(UTC)
 
     if not subfolder:
-        return UnrecognizedImportItem(
+        return UnsupportedImportItem(
             proc_datetime=proc_datetime,
             landing_bucket_key=landing_bucket_key,
             landing_bucket=landing_bucket,
-            unrecognized_bucket_key=proc_datetime.strftime(Y_D_M_H_M) + "/" + landing_bucket_key,
-            unrecognized_bucket=unrecognized_bucket)
+            unsupported_bucket_key=proc_datetime.strftime(Y_D_M_H_M) + "/" + landing_bucket_key,
+            unsupported_bucket=unsupported_bucket)
 
     is_duplicate, preloaded_obj_bytes = run_duplicate_check(
         s3,
