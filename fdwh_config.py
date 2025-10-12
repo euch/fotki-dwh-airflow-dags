@@ -52,8 +52,6 @@ class DagTag:
     FDWH_STORAGE_IO = _prefix + 'storage_io'
 
 
-
-
 class AssetName:
     NEW_FILES_IMPORTED = 'fdwh_new_files_imported'
     RAW_TREES_UPDATED = 'fdwh_raw_trees_updated'
@@ -61,6 +59,7 @@ class AssetName:
     CORE_METADATA_UPDATED = 'fdwh_core_metadata_updated'
     CORE_AI_DESCR_UPDATED = 'fdwh_core_ai_description_updated'
     AI_HELPER_AVAILABLE = 'fdwh_ai_helper_available'
+
 
 class ImportSettings:
     COMPANION_FILE_EXTENSIONS = ['.mov', '.MOV', '.mp4', '.MP4', ]
@@ -70,6 +69,7 @@ class ImportSettings:
 class VariableName:
     _var_prefix = 'FDWH_'
 
+    IMPORT_MAX_FILE_SIZE = _var_prefix + 'IMPORT_MAX_FILE_SIZE'
     BUCKET_LANDING = _var_prefix + 'BUCKET_LANDING'
     BUCKET_REJECTED_DUPLICATES = _var_prefix + 'BUCKET_REJECTED_DUPLICATES'
     BUCKET_REJECTED_UNSUPPORTED = _var_prefix + 'BUCKET_REJECTED_UNSUPPORTED'

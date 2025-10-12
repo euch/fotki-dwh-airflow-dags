@@ -36,7 +36,7 @@ class DuplicateImportItem(ImportItem):
 
 @dataclass_json
 @dataclass
-class UnrecognizedImportItem(ImportItem):
-    unrecognized_bucket: str
-    unrecognized_bucket_key: str
-    status = "unrecognized"
+class UnsupportedImportItem(ImportItem):
+    unsupported_bucket: str
+    unsupported_bucket_key: str
+    status = "unsupported"
