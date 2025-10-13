@@ -58,7 +58,7 @@ echo "Creating symlink $SYMLINK_NAME -> $LATEST_DIR"
 ln -s "$LATEST_DIR" "$SYMLINK_NAME"
 '''
 
-with DAG(dag_id=DagName.REFRESH_WORKCOPY_SYMLINKS, max_active_runs=1, default_args=dag_args_noretry, schedule=schedule,
+with DAG(dag_id=DagName.REFRESH_WORKCOPY_SYMLINKS, max_active_runs=1, default_args=dag_args_retry, schedule=schedule,
          tags=tags) as dag:
     _ = SSHOperator(
         task_id="refresh_latest_collection_subdir_symlink",
