@@ -82,15 +82,16 @@ def fdwh_refresh_flat_symlinks_birds():
             abs_filename, short_filename = row[0], row[1]
             timestamp = _find_rightmost_date(abs_filename)
             if timestamp:
-                cmds.append(f'ln -s "{abs_filename}" /"{Variable.get(VariableName.RP_WORKCOPY)}"/плоские_птицы/"{timestamp}"_"{short_filename}"')
+                root_dir = Variable.get(VariableName.RP_WORKCOPY)
+                cmds.append(f'ln -s "{abs_filename}" /"{root_dir}"/плоские_птицы/"{timestamp}"_"{short_filename}"')
             else:
                 print(f"timestamp not found in {abs_filename}")
         _exec_remote_cmd('; '.join(cmds))
 
-
     @task
     def rm_dead_symlinks() -> None:
-        cmd = f'cd /"{Variable.get(VariableName.RP_WORKCOPY)}"/плоские_птицы/ ' + '&&' + ' find . -type l ! -exec test -e {} \; -print -delete'
+        root_dir = Variable.get(VariableName.RP_WORKCOPY)
+        cmd = f'cd /"{root_dir}"/плоские_птицы/ ' + '&&' + ' find . -type l ! -exec test -e {} \; -print -delete'
         _exec_remote_cmd(cmd)
 
     _bird_dirs = find_bird_dirs()
@@ -99,4 +100,41 @@ def fdwh_refresh_flat_symlinks_birds():
     rm_dead_symlinks()
 
 
+@dag(max_active_runs=1, default_args=dag_args_retry, schedule=schedule, tags=tags, max_active_tasks=1)
+def fdwh_refresh_flat_symlinks_video():
+    @task
+    def find_video_dirs() -> list[(str, str)]:
+        pg_hook = PostgresHook.get_hook(Conn.POSTGRES)
+        sql = 'select distinct directory from dm.col_images_video '
+        records = pg_hook.get_records(sql)
+        return list(map(lambda row: row[0], records))
+
+    @task
+    def create_symlink(dir: str) -> None:
+        cmds = []
+        pg_hook = PostgresHook.get_hook(Conn.POSTGRES)
+        sql = 'select abs_filename, short_filename from dm.col_images_video where directory = %s'
+        for row in pg_hook.get_records(sql, parameters=[dir]):
+            abs_filename, short_filename = row[0], row[1]
+            timestamp = _find_rightmost_date(abs_filename)
+            if timestamp:
+                root_dir = Variable.get(VariableName.RP_WORKCOPY)
+                cmds.append(f'ln -s "{abs_filename}" /"{root_dir}"/плоские_видео/"{timestamp}"_"{short_filename}"')
+            else:
+                print(f"timestamp not found in {abs_filename}")
+        _exec_remote_cmd('; '.join(cmds))
+
+    @task
+    def rm_dead_symlinks() -> None:
+        root_dir = Variable.get(VariableName.RP_WORKCOPY)
+        cmd = f'cd /"{root_dir}"/плоские_видео/ ' + '&&' + ' find . -type l ! -exec test -e {} \; -print -delete'
+        _exec_remote_cmd(cmd)
+
+    _video_dirs = find_video_dirs()
+    _commands = create_symlink.expand(dir=_video_dirs)
+
+    rm_dead_symlinks()
+
+
 fdwh_refresh_flat_symlinks_birds()
+fdwh_refresh_flat_symlinks_video()
