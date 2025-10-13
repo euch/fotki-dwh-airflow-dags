@@ -147,6 +147,17 @@ AS SELECT abs_filename,
    FROM dm.col_images c
   WHERE caption::text ~~* '%bird%'::text OR abs_filename::text ~~* '%птиц%'::text;
 
+-- dm.col_images_video source
+create or replace
+view dm.col_images_video as
+select
+	abs_filename,
+	short_filename,
+	directory
+from
+	dm.col_images
+where
+	upper(split_part(short_filename, '.', '-1')) in ('MOV', 'MP4')
 
 -- dm.col_noexif source
 
@@ -378,39 +389,44 @@ select
 	size
 from
 	(
-	select
-		tree_collection.abs_filename,
-		'collection'::text as type,
-		tree_collection.last_modified_ts,
-		tree_collection.size
-	from
-		raw.tree_collection
-union
-	select
-		tree_trash.abs_filename,
-		'trash'::text as type,
-		tree_trash.last_modified_ts,
-		tree_trash.size
-	from
-		raw.tree_trash
-union
-	select
-		tree_archive.abs_filename,
-		'archive'::text as type,
-		tree_archive.last_modified_ts,
-		tree_archive.size
-	from
-		raw.tree_archive) unnamed_subquery
-where
-	abs_filename::text !~~* '%/CaptureOne/%'::text
-	and abs_filename::text !~~* '%.xmp'::text
-	and size <> 0
-	and abs_filename::text !~~ '%/.%'::text
-	and abs_filename::text !~~ '%/tree.csv'::text
-	and (abs_filename::text ~~* '%.RW2'::text
-		or abs_filename::text ~~* '%.JPG'::text
-		or abs_filename::text ~~* '%.JPEG'::text
-		or abs_filename::text ~~* '%.HEIC'::text
-		or abs_filename::text ~~* '%.NEF'::text
-		or abs_filename::text ~~* '%.GIF'::text
-		or abs_filename::text ~~* '%.PNG'::text);
+        select
+            tree_collection.abs_filename,
+            'collection' as type,
+            tree_collection.last_modified_ts,
+            tree_collection.size
+        from
+            raw.tree_collection
+        union
+        select
+            tree_trash.abs_filename,
+            'trash' as type,
+            tree_trash.last_modified_ts,
+            tree_trash.size
+        from
+            raw.tree_trash
+        union
+        select
+            tree_archive.abs_filename,
+            'archive' as type,
+            tree_archive.last_modified_ts,
+            tree_archive.size
+        from
+            raw.tree_archive
+    )
+    where
+        abs_filename !~~* '%/CaptureOne/%'
+        and abs_filename !~~* '%.xmp'
+        and size <> 0
+        and abs_filename !~~ '%/.%'
+        and abs_filename !~~ '%/tree.csv'
+        and (
+               abs_filename ~~* '%.RW2'
+            or abs_filename ~~* '%.JPG'
+            or abs_filename ~~* '%.JPEG'
+            or abs_filename ~~* '%.HEIC'
+            or abs_filename ~~* '%.NEF'
+            or abs_filename ~~* '%.GIF'
+            or abs_filename ~~* '%.PNG'
+            or abs_filename ~~* '%.MP4'
+            or abs_filename ~~* '%.MOV'
+        );
