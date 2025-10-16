@@ -64,8 +64,6 @@ from
 	core.tree t
 left join core.metadata m on
 	m.abs_filename = t.abs_filename
-join log.core_log cl on
-    cl.abs_filename = m.abs_filename 	
 where
 	t.size < 1000000000
 	-- up to 1 GB limit
@@ -78,7 +76,7 @@ where
 	)
 	and t.abs_filename not in %s
 order by
-    cl.tree_add_ts asc
+    t.abs_filename
 limit 5
 ;
 '''
