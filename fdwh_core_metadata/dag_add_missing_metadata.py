@@ -102,7 +102,7 @@ _update_log_sql = """
 update
     log.core_log 
 set 
-    metadata_add_ts = %s,
+    metadata_add_ts = now(),
     hash = %s
 where
     abs_filename = %s;
@@ -145,7 +145,7 @@ def _add_missing_metadata(smb_conn_name: str, remote_root_path_varname: str, tre
                         corrupt_abs_filenames.add(abs_filename)
 
                     pg_hook.run(_insert_metadata_sql, parameters=[abs_filename, resp['hash'], exif, preview])
-                    pg_hook.run(_update_log_sql, parameters=(datetime.now(), resp['hash'], abs_filename))
+                    pg_hook.run(_update_log_sql, parameters=(resp['hash'], abs_filename))
 
                 else:
                     raise AirflowException(

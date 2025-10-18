@@ -1,5 +1,4 @@
 import io
-from datetime import datetime
 
 import requests
 from airflow.exceptions import AirflowException
@@ -62,7 +61,7 @@ _update_log_sql = '''
 update
 	log.core_log
 set
-	ai_description_add_ts = %s
+	ai_description_add_ts = now()
 where
 	abs_filename = %s
 '''
@@ -125,7 +124,7 @@ def _add_missing_ai_descr(tree_type: str):
                 if response.status_code == 200:
                     captions = response.json()["description"]
                     pg_hook.run(_insert_ai_descr_sql, parameters=[abs_filename, captions, captions])
-                    pg_hook.run(_update_log_sql, parameters=(datetime.now(), abs_filename))
+                    pg_hook.run(_update_log_sql, parameters=abs_filename)
                 else:
                     raise AirflowException(f'Helper returned {response.status_code} for {abs_filename}')
             else:
