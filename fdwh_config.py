@@ -6,6 +6,8 @@ dag_args_retry = {
     'retries': 10,
 }
 
+server_tz = 'Europe/Samara'
+
 
 class Conn:
     _conn_prefix = 'fdwh_'
@@ -22,13 +24,15 @@ class Conn:
 
 class DagName:
     _prefix = 'fdwh_'
+    ADD_MISSING_AI_DESCR = _prefix + 'add_missing_ai_descr'
+    ADD_MISSING_METADATA = _prefix + 'add_missing_metadata'
     FIND_COLLECTION_DUPLICATES = _prefix + 'find_collection_duplicates'
-    FIND_MISSING_AI_DESCR = _prefix + 'find_missing_ai_descr'
-    FIND_MISSING_METADATA = _prefix + 'find_missing_metadata'
     IMPORT_LANDING_FILES_S3 = _prefix + 'import_landing_files_s3'
     PING_SERVICES = _prefix + 'ping_services'
     REFRESH_CORE_TREE = _prefix + 'refresh_core_tree'
     REFRESH_DATAMARTS = _prefix + 'refresh_datamarts'
+    REFRESH_FLAT_SYMLINKS_BIRDS = _prefix + 'refresh_flat_symlinks_birds'
+    REFRESH_FLAT_SYMLINKS_VIDEO = _prefix + 'refresh_flat_symlinks_video'
     REFRESH_RAW_TREES = _prefix + 'refresh_raw_trees'
     REFRESH_WORKCOPY_SYMLINKS = _prefix + 'refresh_workcopy_symlinks'
     RM_COLLECTION_DUPLICATES = _prefix + 'rm_collection_duplicates'
@@ -52,15 +56,13 @@ class DagTag:
     FDWH_STORAGE_IO = _prefix + 'storage_io'
 
 
-
-
 class AssetName:
     NEW_FILES_IMPORTED = 'fdwh_new_files_imported'
     RAW_TREES_UPDATED = 'fdwh_raw_trees_updated'
     CORE_TREE_UPDATED = 'fdwh_core_tree_updated'
     CORE_METADATA_UPDATED = 'fdwh_core_metadata_updated'
     CORE_AI_DESCR_UPDATED = 'fdwh_core_ai_description_updated'
-    AI_HELPER_AVAILABLE = 'fdwh_ai_helper_available'
+
 
 class ImportSettings:
     COMPANION_FILE_EXTENSIONS = ['.mov', '.MOV', '.mp4', '.MP4', ]

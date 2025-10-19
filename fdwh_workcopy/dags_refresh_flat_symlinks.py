@@ -64,8 +64,9 @@ tags = {
 }
 
 
-@dag(max_active_runs=1, default_args=dag_args_retry, schedule=schedule, tags=tags, max_active_tasks=1)
-def fdwh_refresh_flat_symlinks_birds():
+@dag(dag_id=DagName.REFRESH_FLAT_SYMLINKS_BIRDS, max_active_runs=1, default_args=dag_args_retry, schedule=schedule,
+     tags=tags, max_active_tasks=1)
+def refresh_flat_symlinks_birds():
     @task
     def find_bird_dirs() -> list[(str, str)]:
         pg_hook = PostgresHook.get_hook(Conn.POSTGRES)
@@ -100,8 +101,9 @@ def fdwh_refresh_flat_symlinks_birds():
     rm_dead_symlinks()
 
 
-@dag(max_active_runs=1, default_args=dag_args_retry, schedule=schedule, tags=tags, max_active_tasks=1)
-def fdwh_refresh_flat_symlinks_video():
+@dag(dag_id=DagName.REFRESH_FLAT_SYMLINKS_VIDEO, max_active_runs=1, default_args=dag_args_retry, schedule=schedule,
+     tags=tags, max_active_tasks=1)
+def refresh_flat_symlinks_video():
     @task
     def find_video_dirs() -> list[(str, str)]:
         pg_hook = PostgresHook.get_hook(Conn.POSTGRES)
@@ -136,5 +138,5 @@ def fdwh_refresh_flat_symlinks_video():
     rm_dead_symlinks()
 
 
-fdwh_refresh_flat_symlinks_birds()
-fdwh_refresh_flat_symlinks_video()
+refresh_flat_symlinks_birds()
+refresh_flat_symlinks_video()

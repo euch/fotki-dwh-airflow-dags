@@ -1,6 +1,5 @@
 import base64
 import json
-from datetime import datetime
 
 import psycopg2 as psql
 import requests
@@ -22,7 +21,7 @@ tags = {
 }
 
 
-@dag(max_active_runs=1, default_args=dag_args_retry, schedule=schedule, tags=tags)
+@dag(dag_id=DagName.ADD_MISSING_METADATA, max_active_runs=1, default_args=dag_args_retry, schedule=schedule, tags=tags)
 def add_missing_metadata():
     assert_metadata_helper_available = CheckHelperAvailableOperator(
         task_id="assert_metadata_helper_available",
