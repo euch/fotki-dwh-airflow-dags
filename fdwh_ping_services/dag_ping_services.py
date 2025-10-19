@@ -1,7 +1,7 @@
 from datetime import timedelta
 
 from airflow.providers.standard.operators.empty import EmptyOperator
-from airflow.sdk import Asset, Variable, dag
+from airflow.sdk import Variable, dag
 from airflow.timetables.trigger import DeltaTriggerTimetable
 from airflow.utils.trigger_rule import TriggerRule
 
@@ -18,8 +18,7 @@ tags = {
 @dag(dag_id=DagName.PING_SERVICES, max_active_runs=1, default_args=dag_args_noretry, schedule=schedule, tags=tags)
 def dag():
     finish = EmptyOperator(task_id='finish', trigger_rule=TriggerRule.ALL_DONE)
-    notify_ai_helper_available = EmptyOperator(task_id='notify_ai_helper_available',
-                                               outlets=Asset(AssetName.AI_HELPER_AVAILABLE))
+    notify_ai_helper_available = EmptyOperator(task_id='notify_ai_helper_available')
 
     CheckHelperAvailableOperator(
         task_id="check_metadata",
