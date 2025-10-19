@@ -1,14 +1,22 @@
 import io
+from datetime import timedelta
 
 import requests
 from airflow.exceptions import AirflowException
 from airflow.providers.postgres.hooks.postgres import PostgresHook
 from airflow.sdk import Asset, Variable, dag, task
+from airflow.timetables.assets import AssetOrTimeSchedule
+from airflow.timetables.trigger import CronTriggerTimetable
+from pendulum import Timezone
 
 from fdwh_config import *
 from fdwh_op_check_helper_available import CheckHelperAvailableOperator
 
-schedule = (Asset(AssetName.AI_HELPER_AVAILABLE) & Asset(AssetName.CORE_METADATA_UPDATED))
+schedule = AssetOrTimeSchedule(
+    timetable=CronTriggerTimetable('0 1 * * *', timezone=Timezone(server_tz)),
+    assets=Asset(AssetName.CORE_METADATA_UPDATED)
+)
+max_duration = timedelta(hours=6)
 tags = {
     DagTag.FDWH_CORE,
     DagTag.FDWH_HELPERS,
@@ -65,21 +73,22 @@ where
 '''
 
 
-@dag(max_active_runs=1, default_args=dag_args_retry, schedule=schedule, tags=tags)
+@dag(dag_id=DagName.ADD_MISSING_AI_DESCR, max_active_runs=1, default_args=dag_args_noretry,
+     schedule=schedule, tags=tags)
 def add_missing_ai_descr():
     assert_ai_descr_helper_available = CheckHelperAvailableOperator(
         task_id='assert_ai_descr_helper_available',
         url=Variable.get(VariableName.AI_DESCR_ENDPOINT))
 
-    @task
+    @task(execution_timeout=max_duration)
     def add_missing_ai_descr_collection():
         return _add_missing_ai_descr('collection')
 
-    @task
+    @task(execution_timeout=max_duration)
     def add_missing_ai_descr_archive():
         return _add_missing_ai_descr('archive')
 
-    @task
+    @task(execution_timeout=max_duration)
     def add_missing_ai_descr_trash():
         return _add_missing_ai_descr('trash')
 
@@ -122,7 +131,7 @@ def _add_missing_ai_descr(tree_type: str):
                 if response.status_code == 200:
                     captions = response.json()["description"]
                     pg_hook.run(_insert_ai_descr_sql, parameters=[abs_filename, captions, captions])
-                    pg_hook.run(_update_log_sql, parameters=abs_filename)
+                    pg_hook.run(_update_log_sql, parameters=[abs_filename])
                 else:
                     raise AirflowException(f'Helper returned {response.status_code} for {abs_filename}')
             else:
