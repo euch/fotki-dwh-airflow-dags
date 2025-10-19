@@ -76,7 +76,7 @@ where
 	)
 	and t.abs_filename not in %s
 order by
-    t.abs_filename
+    t.abs_filename desc
 limit 5
 ;
 '''
