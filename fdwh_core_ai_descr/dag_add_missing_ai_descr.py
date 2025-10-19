@@ -28,8 +28,6 @@ from
     core.metadata m
 left join core.ai_description ad on
     ad.abs_filename = m.abs_filename
-join log.core_log cl on
-    cl.abs_filename = m.abs_filename
 join core.tree t on
     t.abs_filename = m.abs_filename
 where
@@ -38,7 +36,7 @@ where
     and t."type" = %s
 	and t.abs_filename not in %s    
 order by
-    cl.tree_add_ts desc
+    m.abs_filename desc
 limit 5;
 '''
 
