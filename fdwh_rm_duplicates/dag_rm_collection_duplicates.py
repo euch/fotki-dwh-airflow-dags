@@ -13,7 +13,7 @@ def _delete_selected_collection_duplicates():
         sql='select abs_filename, "hash" from duplicates.collection_duplicates where "delete" is true;')
     for r in records:
         abs_filename, hash = r[0], r[1]
-        rel_filename = abs_filename.removeprefix(Variable.get(VariableName.RP_COLLECTION)).removeprefix("/")
+        rel_filename = abs_filename.removeprefix(Variable.get(VariableName.STORAGE_PATH_COLLECTION)).removeprefix("/")
         print(f"Removing {rel_filename}")
         smb_hook_collection.remove(rel_filename)
         pg_hook.run(sql=f'''delete from duplicates.collection_duplicates where "hash" = '{hash}';''')

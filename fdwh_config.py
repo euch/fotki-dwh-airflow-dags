@@ -76,10 +76,10 @@ class VariableName:
     BUCKET_REJECTED_DUPLICATES = _var_prefix + 'BUCKET_REJECTED_DUPLICATES'
     BUCKET_REJECTED_UNSUPPORTED = _var_prefix + 'BUCKET_REJECTED_UNSUPPORTED'
 
-    RP_ARCHIVE = _var_prefix + 'RP_ARCHIVE'
-    RP_COLLECTION = _var_prefix + 'RP_COLLECTION'
-    RP_TRASH = _var_prefix + 'RP_TRASH'
-    RP_WORKCOPY = _var_prefix + 'RP_WORKCOPY'
+    STORAGE_PATH_ARCHIVE = _var_prefix + 'RP_ARCHIVE'
+    STORAGE_PATH_COLLECTION = _var_prefix + 'RP_COLLECTION'
+    STORAGE_PATH_TRASH = _var_prefix + 'RP_TRASH'
+    STORAGE_PATH_WORKCOPY = _var_prefix + 'RP_WORKCOPY'
 
     AI_DESCR_ENDPOINT = _var_prefix + 'AI_DESCR_ENDPOINT'
     METADATA_ENDPOINT = _var_prefix + 'METADATA_ENDPOINT'

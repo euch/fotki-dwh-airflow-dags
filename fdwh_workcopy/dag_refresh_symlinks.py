@@ -11,14 +11,14 @@ tags = {
 
 refresh_latest_collection_subdir_symlink_cmd = f'''
 
-COLLECTION_DIR="{Variable.get(VariableName.RP_COLLECTION)}"
+COLLECTION_DIR="{Variable.get(VariableName.STORAGE_PATH_COLLECTION)}"
 # Check if we found a directory
 if [ -z "COLLECTION_DIR" ]; then
     echo "Error: COLLECTION_DIR is empty"
     exit 1
 fi
 
-WORKCOPY_DIR="{Variable.get(VariableName.RP_WORKCOPY)}"
+WORKCOPY_DIR="{Variable.get(VariableName.STORAGE_PATH_WORKCOPY)}"
 # Check if we found a directory
 if [ -z "WORKCOPY_DIR" ]; then
     echo "Error: WORKCOPY_DIR is empty"
@@ -71,28 +71,28 @@ with DAG(dag_id=DagName.REFRESH_WORKCOPY_SYMLINKS, max_active_runs=1, default_ar
             task_id='закат',
             do_xcom_push=False,
             ssh_conn_id=Conn.SSH_STORAGE,
-            command=f'''find "{Variable.get(VariableName.RP_COLLECTION)}" -iname "*закат*" -exec ln -s {{}} /"{Variable.get(VariableName.RP_WORKCOPY)}"/закат \;''')
+            command=f'''find "{Variable.get(VariableName.STORAGE_PATH_COLLECTION)}" -iname "*закат*" -exec ln -s {{}} /"{Variable.get(VariableName.STORAGE_PATH_WORKCOPY)}"/закат \;''')
 
         with TaskGroup(group_id='птицовы'):
             _ = SSHOperator(
                 task_id='сускан',
                 do_xcom_push=False,
                 ssh_conn_id=Conn.SSH_STORAGE,
-                command=f'''find "{Variable.get(VariableName.RP_COLLECTION)}" -iname "*сускан*" -exec ln -s {{}} /"{Variable.get(VariableName.RP_WORKCOPY)}"/птицовы \;''')
+                command=f'''find "{Variable.get(VariableName.STORAGE_PATH_COLLECTION)}" -iname "*сускан*" -exec ln -s {{}} /"{Variable.get(VariableName.STORAGE_PATH_WORKCOPY)}"/птицовы \;''')
             _ = SSHOperator(
                 task_id='птиц',
                 do_xcom_push=False,
                 ssh_conn_id=Conn.SSH_STORAGE,
-                command=f'''find "{Variable.get(VariableName.RP_COLLECTION)}" -iname "*птиц*" -exec ln -s {{}} /"{Variable.get(VariableName.RP_WORKCOPY)}"/птицовы \;''')
+                command=f'''find "{Variable.get(VariableName.STORAGE_PATH_COLLECTION)}" -iname "*птиц*" -exec ln -s {{}} /"{Variable.get(VariableName.STORAGE_PATH_WORKCOPY)}"/птицовы \;''')
 
         with TaskGroup(group_id='жена'):
             _ = SSHOperator(
                 task_id='катя',
                 do_xcom_push=False,
                 ssh_conn_id=Conn.SSH_STORAGE,
-                command=f'''find "{Variable.get(VariableName.RP_COLLECTION)}" -iname "*катя*" -exec ln -s {{}} /"{Variable.get(VariableName.RP_WORKCOPY)}"/жена \;''')
+                command=f'''find "{Variable.get(VariableName.STORAGE_PATH_COLLECTION)}" -iname "*катя*" -exec ln -s {{}} /"{Variable.get(VariableName.STORAGE_PATH_WORKCOPY)}"/жена \;''')
             _ = SSHOperator(
                 task_id='кате',
                 do_xcom_push=False,
                 ssh_conn_id=Conn.SSH_STORAGE,
-                command=f'''find "{Variable.get(VariableName.RP_COLLECTION)}" -iname "*кате*" -exec ln -s {{}} /"{Variable.get(VariableName.RP_WORKCOPY)}"/жена \;''')
+                command=f'''find "{Variable.get(VariableName.STORAGE_PATH_COLLECTION)}" -iname "*кате*" -exec ln -s {{}} /"{Variable.get(VariableName.STORAGE_PATH_WORKCOPY)}"/жена \;''')

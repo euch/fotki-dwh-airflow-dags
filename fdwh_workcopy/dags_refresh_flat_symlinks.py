@@ -83,7 +83,7 @@ def refresh_flat_symlinks_birds():
             abs_filename, short_filename = row[0], row[1]
             timestamp = _find_rightmost_date(abs_filename)
             if timestamp:
-                root_dir = Variable.get(VariableName.RP_WORKCOPY)
+                root_dir = Variable.get(VariableName.STORAGE_PATH_WORKCOPY)
                 cmds.append(f'ln -s "{abs_filename}" /"{root_dir}"/плоские_птицы/"{timestamp}"_"{short_filename}"')
             else:
                 print(f"timestamp not found in {abs_filename}")
@@ -91,7 +91,7 @@ def refresh_flat_symlinks_birds():
 
     @task
     def rm_dead_symlinks() -> None:
-        root_dir = Variable.get(VariableName.RP_WORKCOPY)
+        root_dir = Variable.get(VariableName.STORAGE_PATH_WORKCOPY)
         cmd = f'cd /"{root_dir}"/плоские_птицы/ ' + '&&' + ' find . -type l ! -exec test -e {} \; -print -delete'
         _exec_remote_cmd(cmd)
 
@@ -120,7 +120,7 @@ def refresh_flat_symlinks_video():
             abs_filename, short_filename = row[0], row[1]
             timestamp = _find_rightmost_date(abs_filename)
             if timestamp:
-                root_dir = Variable.get(VariableName.RP_WORKCOPY)
+                root_dir = Variable.get(VariableName.STORAGE_PATH_WORKCOPY)
                 cmds.append(f'ln -s "{abs_filename}" /"{root_dir}"/плоские_видео/"{timestamp}"_"{short_filename}"')
             else:
                 print(f"timestamp not found in {abs_filename}")
@@ -128,7 +128,7 @@ def refresh_flat_symlinks_video():
 
     @task
     def rm_dead_symlinks() -> None:
-        root_dir = Variable.get(VariableName.RP_WORKCOPY)
+        root_dir = Variable.get(VariableName.STORAGE_PATH_WORKCOPY)
         cmd = f'cd /"{root_dir}"/плоские_видео/ ' + '&&' + ' find . -type l ! -exec test -e {} \; -print -delete'
         _exec_remote_cmd(cmd)
 

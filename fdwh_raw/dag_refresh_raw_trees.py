@@ -36,21 +36,21 @@ REFRESH_RAW_CONFS: list[RefreshRawConf] = [
     RefreshRawConf(
         group_id='archive',
         smb_conn_name=Conn.SMB_ARCHIVE,
-        tree_file_csv_remote_path=Variable.get(VariableName.RP_ARCHIVE),
+        tree_file_csv_remote_path=Variable.get(VariableName.STORAGE_PATH_ARCHIVE),
         tree_file_csv_local_path="/tmp/tree_archive.csv",
         pg_tree_table="raw.tree_archive"
     ),
     RefreshRawConf(
         group_id='collection',
         smb_conn_name=Conn.SMB_COLLECTION,
-        tree_file_csv_remote_path=Variable.get(VariableName.RP_COLLECTION),
+        tree_file_csv_remote_path=Variable.get(VariableName.STORAGE_PATH_COLLECTION),
         tree_file_csv_local_path="/tmp/tree_collection.csv",
         pg_tree_table="raw.tree_collection"
     ),
     RefreshRawConf(
         group_id='trash',
         smb_conn_name=Conn.SMB_TRASH,
-        tree_file_csv_remote_path=Variable.get(VariableName.RP_TRASH),
+        tree_file_csv_remote_path=Variable.get(VariableName.STORAGE_PATH_TRASH),
         tree_file_csv_local_path="/tmp/tree_trash.csv",
         pg_tree_table="raw.tree_trash"
     )

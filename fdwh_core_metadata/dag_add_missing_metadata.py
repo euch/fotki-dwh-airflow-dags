@@ -29,15 +29,15 @@ def add_missing_metadata():
 
     @task
     def add_missing_metadata_collection():
-        return _add_missing_metadata(Conn.SMB_COLLECTION, VariableName.RP_COLLECTION, 'collection')
+        return _add_missing_metadata(Conn.SMB_COLLECTION, VariableName.STORAGE_PATH_COLLECTION, 'collection')
 
     @task
     def add_missing_metadata_trash():
-        return _add_missing_metadata(Conn.SMB_TRASH, VariableName.RP_TRASH, 'trash')
+        return _add_missing_metadata(Conn.SMB_TRASH, VariableName.STORAGE_PATH_TRASH, 'trash')
 
     @task
     def add_missing_metadata_archive():
-        return _add_missing_metadata(Conn.SMB_ARCHIVE, VariableName.RP_ARCHIVE, 'archive')
+        return _add_missing_metadata(Conn.SMB_ARCHIVE, VariableName.STORAGE_PATH_ARCHIVE, 'archive')
 
     @task(outlets=[Asset[AssetName.CORE_METADATA_UPDATED]])
     def end():
