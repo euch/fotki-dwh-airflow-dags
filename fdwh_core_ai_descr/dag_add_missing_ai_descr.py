@@ -13,7 +13,7 @@ from fdwh_config import *
 from fdwh_op_check_helper_available import CheckHelperAvailableOperator
 
 schedule = AssetOrTimeSchedule(
-    timetable=CronTriggerTimetable('0 1 * * *', timezone=Timezone(server_tz)),
+    timetable=CronTriggerTimetable('0 1 * * *', timezone=Timezone(server_tz_name)),
     assets=Asset(AssetName.CORE_METADATA_UPDATED)
 )
 max_duration = timedelta(hours=6)
