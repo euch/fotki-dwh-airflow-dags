@@ -14,7 +14,6 @@ from fdwh_config import (
     dag_args_retry, VariableName, Conn, server_timezone
 )
 
-# Constants
 SCHEDULE = AssetOrTimeSchedule(
     timetable=CronTriggerTimetable('0 0 * * *', timezone=Timezone(server_tz_name)),
     assets=Asset(AssetName.CORE_TREE_UPDATED)
@@ -61,7 +60,6 @@ def create_dataset_snapshot_group(config: SnapshotConfig, snapshot_type):
         def filter_snapshot_type(snapshot_type):
             return snapshot_type not in config.ignored_snapshot_types
 
-
         @task
         def get_latest_snapshot() -> str:
             cmd = f'zfs list -t snapshot -o name -s creation -r "{dataset_name}" | tail -1'
@@ -88,7 +86,10 @@ def create_dataset_snapshot_group(config: SnapshotConfig, snapshot_type):
 
         @task.short_circuit()
         def evaluate_snapshot_need(snapshot_type, changes: list[str]) -> bool:
-            return snapshot_type in check_diff_snapshot_types or len(changes) > 0
+            if snapshot_type not in check_diff_snapshot_types:
+                return True
+            else:
+                return len(changes) > 0
 
         @task()
         def create_snapshot(snapshot_type) -> str:
