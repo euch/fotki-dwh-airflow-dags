@@ -10,6 +10,7 @@ from airflow.providers.standard.operators.python import BranchPythonOperator
 from airflow.providers.standard.operators.trigger_dagrun import TriggerDagRunOperator
 from airflow.sdk import Asset, dag, Variable, task
 from airflow.timetables.trigger import DeltaTriggerTimetable
+from airflow.utils.trigger_rule import TriggerRule
 
 from fdwh_config import *
 from fdwh_import.dto.import_item import GoodImportItem, ImportItem
@@ -27,10 +28,11 @@ tags = {
 }
 
 
-@dag(
-    dag_id=DagName.IMPORT_LANDING_FILES_S3, max_active_runs=1, default_args=dag_args_noretry, schedule=schedule,
-    tags=tags)
+@dag(dag_id=DagName.IMPORT_LANDING_FILES_S3, max_active_runs=1, default_args=dag_args_noretry, schedule=schedule,
+     tags=tags)
 def dag():
+    finish = EmptyOperator(task_id="finish", trigger_rule=TriggerRule.ONE_SUCCESS)
+
     wait_for_any_s3_file = S3KeySensor(
         task_id='wait_for_any_s3_file',
         bucket_key='*',
@@ -41,6 +43,12 @@ def dag():
         aws_conn_id=Conn.MINIO,
         soft_fail=True,
     )
+
+    wait_timeout = EmptyOperator(task_id="wait_timeout", trigger_rule=TriggerRule.ALL_FAILED)
+    wait_success = EmptyOperator(task_id="wait_success")
+
+    wait_for_any_s3_file >> [wait_timeout, wait_success]
+    wait_timeout >> finish
 
     assert_exif_helper_available = CheckHelperAvailableOperator(
         task_id="assert_exif_helper_available",
@@ -82,26 +90,19 @@ def dag():
         aws_conn_id=Conn.MINIO
     )
 
+    wait_success >> assert_exif_helper_available >> import_landing_files() >> list_remaining_s3_files
+
     def choose_next_path(**kwargs):
-        return 'reschedule' if kwargs['ti'].xcom_pull(task_ids='list_remaining_s3_files') else 'finish'
+        return 'import_incomplete' if kwargs['ti'].xcom_pull(task_ids='list_remaining_s3_files') else 'import_success'
 
-    branch = BranchPythonOperator(
-        task_id='branch',
-        python_callable=choose_next_path,
-    )
+    branch = BranchPythonOperator(task_id='branch', python_callable=choose_next_path, )
+    import_incomplete = EmptyOperator(task_id='import_incomplete')
+    import_success = EmptyOperator(task_id='import_success', outlets=[Asset(AssetName.NEW_FILES_IMPORTED)])
+    reschedule = TriggerDagRunOperator(task_id='reschedule', trigger_dag_id=DagName.IMPORT_LANDING_FILES_S3)
 
-    reschedule = TriggerDagRunOperator(
-        task_id='reschedule',
-        trigger_dag_id=DagName.IMPORT_LANDING_FILES_S3
-    )
-
-    finish = EmptyOperator(
-        task_id='finish',
-        outlets=[Asset(AssetName.NEW_FILES_IMPORTED)]
-    )
-
-    wait_for_any_s3_file >> assert_exif_helper_available >> import_landing_files() >> list_remaining_s3_files
-    list_remaining_s3_files >> branch >> [reschedule, finish]
+    list_remaining_s3_files >> branch >> [import_incomplete, import_success]
+    import_success >> finish
+    import_incomplete >> reschedule >> finish
 
 
 dag()
