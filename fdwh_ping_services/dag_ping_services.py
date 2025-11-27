@@ -18,7 +18,6 @@ tags = {
 @dag(dag_id=DagName.PING_SERVICES, max_active_runs=1, default_args=dag_args_noretry, schedule=schedule, tags=tags)
 def dag():
     finish = EmptyOperator(task_id='finish', trigger_rule=TriggerRule.ALL_DONE)
-    notify_ai_helper_available = EmptyOperator(task_id='notify_ai_helper_available')
 
     CheckHelperAvailableOperator(
         task_id="check_metadata",
@@ -29,8 +28,12 @@ def dag():
         url=Variable.get(VariableName.EXIF_TS_ENDPOINT)) >> finish
 
     CheckHelperAvailableOperator(
+        task_id="check_ollama",
+        url=Variable.get(VariableName.OLLAMA_ENDPOINT)) >> finish
+
+    CheckHelperAvailableOperator(
         task_id="check_ai_desc",
-        url=Variable.get(VariableName.AI_DESCR_ENDPOINT)) >> notify_ai_helper_available >> finish
+        url=Variable.get(VariableName.AI_DESCR_ENDPOINT)) >> finish
 
 
 dag()
