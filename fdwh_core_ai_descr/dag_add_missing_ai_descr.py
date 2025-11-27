@@ -1,3 +1,4 @@
+import base64
 import io
 from datetime import timedelta
 
@@ -52,7 +53,7 @@ _insert_ai_descr_sql = f'''
 insert
 	into
 	core.ai_description (abs_filename,
-	caption_vit_gpt2)
+	caption_llava)
 values (%s,
 %s)
 on
@@ -60,7 +61,7 @@ conflict (abs_filename)
 do
 update
 set
-	caption_vit_gpt2 = %s;
+	caption_llava = %s;
 '''
 
 _update_log_sql = '''
@@ -108,7 +109,7 @@ add_missing_ai_descr()
 
 def _add_missing_ai_descr(tree_type: str):
     pg_hook = PostgresHook.get_hook(Conn.POSTGRES)
-    endpoint = Variable.get(VariableName.AI_DESCR_ENDPOINT)
+    endpoint = Variable.get(VariableName.OLLAMA_ENDPOINT)
 
     broken_previews_abs_filenames = {''}
 
@@ -127,12 +128,23 @@ def _add_missing_ai_descr(tree_type: str):
             abs_filename, preview, has_more_records = r[0], r[1], r[2]
             print(abs_filename)
             if len(preview) > 1000:
-                response = requests.post(endpoint, files={'file': io.BytesIO(preview)})
+                image_base64 =  base64.b64encode(io.BytesIO(preview).read()).decode('utf-8')
+                payload = {
+                    "model": "llava:latest",
+                    "prompt": "Describe in as many details as possible What is shown in this image, including the style of the image.",
+                    "stream": False,
+                    "images": [image_base64]
+                }
+                headers = {"Content-Type": "application/json"}
+                print(f"posting image data of {abs_filename} to {endpoint}")
+                response = requests.post(endpoint, json=payload, headers=headers)
                 if response.status_code == 200:
-                    captions = response.json()["description"]
+                    result = response.json()
+                    captions = result.get('response')
                     pg_hook.run(_insert_ai_descr_sql, parameters=[abs_filename, captions, captions])
                     pg_hook.run(_update_log_sql, parameters=[abs_filename])
                 else:
+                    print(response.content)
                     raise AirflowException(f'Helper returned {response.status_code} for {abs_filename}')
             else:
                 broken_previews_abs_filenames.add(abs_filename)

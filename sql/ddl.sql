@@ -1,6 +1,6 @@
 -- DROP SCHEMA core;
 
-CREATE SCHEMA core;
+CREATE SCHEMA core AUTHORIZATION postgres;
 -- core.tree definition
 
 -- Drop table
@@ -25,6 +25,7 @@ CREATE TABLE core.tree (
 CREATE TABLE core.ai_description (
 	abs_filename varchar NOT NULL,
 	caption_vit_gpt2 varchar NULL,
+	caption_llava varchar NULL,
 	CONSTRAINT ai_description_pk PRIMARY KEY (abs_filename),
 	CONSTRAINT ai_description_tree_fk FOREIGN KEY (abs_filename) REFERENCES core.tree(abs_filename) ON DELETE CASCADE ON UPDATE RESTRICT
 );
@@ -48,7 +49,7 @@ CREATE INDEX metadata_hash_idx ON core.metadata USING btree (hash);
 
 -- DROP SCHEMA dm;
 
-CREATE SCHEMA dm;
+CREATE SCHEMA dm AUTHORIZATION postgres;
 -- dm.counts definition
 
 -- Drop table
@@ -126,9 +127,9 @@ AS SELECT (string_to_array(abs_filename::text, '/'::text, NULL::text))[5] AS col
 CREATE OR REPLACE VIEW dm.col_images
 AS SELECT t.abs_filename,
     split_part(t.abs_filename::text, '/'::text, '-1'::integer) AS short_filename,
-    left(t.abs_filename, length(t.abs_filename) - position('/' in reverse(t.abs_filename))) as directory,
+    "left"(t.abs_filename::text, length(t.abs_filename::text) - POSITION(('/'::text) IN (reverse(t.abs_filename::text)))) AS directory,
     m.preview,
-    ad.caption_vit_gpt2 AS caption
+    COALESCE(ad.caption_llava, ad.caption_vit_gpt2) AS caption
    FROM core.tree t
      LEFT JOIN core.metadata m ON m.abs_filename::text = t.abs_filename::text
      LEFT JOIN core.ai_description ad ON ad.abs_filename::text = t.abs_filename::text
@@ -147,17 +148,16 @@ AS SELECT abs_filename,
    FROM dm.col_images c
   WHERE caption::text ~~* '%bird%'::text OR abs_filename::text ~~* '%птиц%'::text;
 
+
 -- dm.col_images_video source
-create or replace
-view dm.col_images_video as
-select
-	abs_filename,
-	short_filename,
-	directory
-from
-	dm.col_images
-where
-	upper(split_part(short_filename, '.', '-1')) in ('MOV', 'MP4')
+
+CREATE OR REPLACE VIEW dm.col_images_video
+AS SELECT abs_filename,
+    short_filename,
+    directory
+   FROM dm.col_images
+  WHERE upper(split_part(short_filename, '.'::text, '-1'::integer)) = ANY (ARRAY['MOV'::text, 'MP4'::text]);
+
 
 -- dm.col_noexif source
 
@@ -231,7 +231,7 @@ AS WITH weird_file_types AS (
 
 -- DROP SCHEMA duplicates;
 
-CREATE SCHEMA duplicates;
+CREATE SCHEMA duplicates AUTHORIZATION postgres;
 -- duplicates.collection_duplicates definition
 
 -- Drop table
@@ -274,7 +274,7 @@ AS WITH col_ts_dirs AS (
 
 -- DROP SCHEMA log;
 
-CREATE SCHEMA log;
+CREATE SCHEMA log AUTHORIZATION postgres;
 -- log.core_deleted_log definition
 
 -- Drop table
@@ -309,7 +309,7 @@ CREATE TABLE log.core_log (
 
 -- DROP SCHEMA raw;
 
-CREATE SCHEMA raw;
+CREATE SCHEMA raw AUTHORIZATION postgres;
 -- raw.tree_archive definition
 
 -- Drop table
@@ -380,53 +380,26 @@ AS SELECT abs_filename,
 
 -- raw.tree_all source
 
-create or REPLACE view raw.tree_all
-as
-select
-	abs_filename,
-	type,
-	last_modified_ts,
-	size
-from
-	(
-        select
-            tree_collection.abs_filename,
-            'collection' as type,
+CREATE OR REPLACE VIEW raw.tree_all
+AS SELECT abs_filename,
+    type,
+    last_modified_ts,
+    size
+   FROM ( SELECT tree_collection.abs_filename,
+            'collection'::text AS type,
             tree_collection.last_modified_ts,
             tree_collection.size
-        from
-            raw.tree_collection
-        union
-        select
-            tree_trash.abs_filename,
-            'trash' as type,
+           FROM raw.tree_collection
+        UNION
+         SELECT tree_trash.abs_filename,
+            'trash'::text AS type,
             tree_trash.last_modified_ts,
             tree_trash.size
-        from
-            raw.tree_trash
-        union
-        select
-            tree_archive.abs_filename,
-            'archive' as type,
+           FROM raw.tree_trash
+        UNION
+         SELECT tree_archive.abs_filename,
+            'archive'::text AS type,
             tree_archive.last_modified_ts,
             tree_archive.size
-        from
-            raw.tree_archive
-    )
-    where
-        abs_filename !~~* '%/CaptureOne/%'
-        and abs_filename !~~* '%.xmp'
-        and size <> 0
-        and abs_filename !~~ '%/.%'
-        and abs_filename !~~ '%/tree.csv'
-        and (
-               abs_filename ~~* '%.RW2'
-            or abs_filename ~~* '%.JPG'
-            or abs_filename ~~* '%.JPEG'
-            or abs_filename ~~* '%.HEIC'
-            or abs_filename ~~* '%.NEF'
-            or abs_filename ~~* '%.GIF'
-            or abs_filename ~~* '%.PNG'
-            or abs_filename ~~* '%.MP4'
-            or abs_filename ~~* '%.MOV'
-        );
+           FROM raw.tree_archive) unnamed_subquery
+  WHERE abs_filename::text !~~* '%/CaptureOne/%'::text AND abs_filename::text !~~* '%.xmp'::text AND size <> 0 AND abs_filename::text !~~ '%/.%'::text AND abs_filename::text !~~ '%/tree.csv'::text AND (abs_filename::text ~~* '%.RW2'::text OR abs_filename::text ~~* '%.JPG'::text OR abs_filename::text ~~* '%.JPEG'::text OR abs_filename::text ~~* '%.HEIC'::text OR abs_filename::text ~~* '%.NEF'::text OR abs_filename::text ~~* '%.GIF'::text OR abs_filename::text ~~* '%.PNG'::text OR abs_filename::text ~~* '%.MP4'::text OR abs_filename::text ~~* '%.MOV'::text);
