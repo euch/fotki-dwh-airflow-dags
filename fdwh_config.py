@@ -26,7 +26,7 @@ class Conn:
 
 class DagName:
     _prefix = 'fdwh_'
-    ADD_MISSING_AI_DESCR = _prefix + 'add_missing_ai_descr'
+    ADD_MISSING_CAPTION = _prefix + 'add_missing_caption'
     ADD_MISSING_METADATA = _prefix + 'add_missing_metadata'
     FIND_COLLECTION_DUPLICATES = _prefix + 'find_collection_duplicates'
     IMPORT_LANDING_FILES_S3 = _prefix + 'import_landing_files_s3'

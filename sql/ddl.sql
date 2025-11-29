@@ -1,6 +1,59 @@
 -- DROP SCHEMA core;
 
 CREATE SCHEMA core AUTHORIZATION postgres;
+
+-- DROP SEQUENCE core.caption_conf_id_seq;
+
+CREATE SEQUENCE core.caption_conf_id_seq
+	INCREMENT BY 1
+	MINVALUE 1
+	MAXVALUE 2147483647
+	START 1
+	CACHE 1
+	NO CYCLE;-- core.ai_description definition
+
+-- Drop table
+
+-- DROP TABLE core.ai_description;
+
+CREATE TABLE core.ai_description (
+	abs_filename varchar NOT NULL,
+	caption_vit_gpt2 varchar NULL,
+	caption_llava varchar NULL
+);
+
+
+-- core.caption definition
+
+-- Drop table
+
+-- DROP TABLE core.caption;
+
+CREATE TABLE core.caption (
+	hash varchar NOT NULL,
+	caption_conf_id int4 NOT NULL,
+	caption text NOT NULL,
+	create_ts timestamptz DEFAULT now() NOT NULL,
+	"delete" bool DEFAULT false NOT NULL,
+	delete_ts timestamptz NULL
+);
+CREATE INDEX caption_caption_idx ON core.caption USING btree (caption);
+
+
+-- core.caption_conf definition
+
+-- Drop table
+
+-- DROP TABLE core.caption_conf;
+
+CREATE TABLE core.caption_conf (
+	id serial4 NOT NULL,
+	model varchar NOT NULL,
+	prompt varchar NOT NULL,
+	CONSTRAINT caption_conf_pk PRIMARY KEY (id)
+);
+
+
 -- core.tree definition
 
 -- Drop table
@@ -16,18 +69,17 @@ CREATE TABLE core.tree (
 );
 
 
--- core.ai_description definition
+-- core.caption_conf_selection definition
 
 -- Drop table
 
--- DROP TABLE core.ai_description;
+-- DROP TABLE core.caption_conf_selection;
 
-CREATE TABLE core.ai_description (
-	abs_filename varchar NOT NULL,
-	caption_vit_gpt2 varchar NULL,
-	caption_llava varchar NULL,
-	CONSTRAINT ai_description_pk PRIMARY KEY (abs_filename),
-	CONSTRAINT ai_description_tree_fk FOREIGN KEY (abs_filename) REFERENCES core.tree(abs_filename) ON DELETE CASCADE ON UPDATE RESTRICT
+CREATE TABLE core.caption_conf_selection (
+	selection_ts timestamptz DEFAULT now() NOT NULL,
+	caption_conf_id int4 NOT NULL,
+	CONSTRAINT caption_conf_selected_unique UNIQUE (selection_ts),
+	CONSTRAINT caption_conf_selected_caption_conf_fk FOREIGN KEY (caption_conf_id) REFERENCES core.caption_conf(id)
 );
 
 
@@ -46,6 +98,25 @@ CREATE TABLE core.metadata (
 	CONSTRAINT metadata_fk FOREIGN KEY (abs_filename) REFERENCES core.tree(abs_filename) ON DELETE CASCADE ON UPDATE RESTRICT
 );
 CREATE INDEX metadata_hash_idx ON core.metadata USING btree (hash);
+
+
+-- core.current_caption_conf source
+
+CREATE OR REPLACE VIEW core.current_caption_conf
+AS SELECT cc.id,
+    cc.model,
+    cc.prompt
+   FROM core.caption_conf cc
+     JOIN core.current_caption_conf_selection cccs ON cccs.caption_conf_id = cc.id;
+
+
+-- core.current_caption_conf_selection source
+
+CREATE OR REPLACE VIEW core.current_caption_conf_selection
+AS SELECT DISTINCT ON (selection_ts) caption_conf_id
+   FROM core.caption_conf_selection ccs
+  ORDER BY selection_ts DESC
+ LIMIT 1;
 
 -- DROP SCHEMA dm;
 
@@ -129,10 +200,10 @@ AS SELECT t.abs_filename,
     split_part(t.abs_filename::text, '/'::text, '-1'::integer) AS short_filename,
     "left"(t.abs_filename::text, length(t.abs_filename::text) - POSITION(('/'::text) IN (reverse(t.abs_filename::text)))) AS directory,
     m.preview,
-    COALESCE(ad.caption_llava, ad.caption_vit_gpt2) AS caption
+    lc.caption::character varying AS caption
    FROM core.tree t
      LEFT JOIN core.metadata m ON m.abs_filename::text = t.abs_filename::text
-     LEFT JOIN core.ai_description ad ON ad.abs_filename::text = t.abs_filename::text
+     LEFT JOIN dm.latest_caption lc ON lc.abs_filename::text = t.abs_filename::text
   WHERE t.type::text = 'collection'::text
   ORDER BY t.abs_filename DESC;
 
@@ -208,6 +279,17 @@ AS SELECT abs_filename,
   WHERE NOT (EXISTS ( SELECT 1
            FROM raw.tree_all t
           WHERE t.abs_filename::text = e.abs_filename::text));
+
+
+-- dm.latest_caption source
+
+CREATE OR REPLACE VIEW dm.latest_caption
+AS SELECT DISTINCT ON (c.create_ts, c.hash) m.abs_filename,
+    c.caption
+   FROM core.caption c
+     JOIN core.metadata m ON m.hash::text = c.hash::text
+  WHERE c.delete IS FALSE
+  ORDER BY c.create_ts DESC;
 
 
 -- dm.weird_files source

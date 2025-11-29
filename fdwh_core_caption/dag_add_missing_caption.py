@@ -25,46 +25,44 @@ tags = {
     DagTag.SMB,
 }
 
-_missing_ai_descr_select_sql = '''
-select 
-    m.abs_filename,
+_missing_caption_select_sql = '''
+select
+    m.hash,
     m.preview,
+    m.abs_filename,
     CASE 
         WHEN COUNT(*) OVER() >= 5 THEN true 
         ELSE false 
     END as has_more_pages
 from
     core.metadata m
-left join core.ai_description ad on
-    ad.abs_filename = m.abs_filename
+left join core.caption c on
+    c.hash = m.hash
 join core.tree t on
     t.abs_filename = m.abs_filename
 where
-    ad.abs_filename is null
+    (c.hash is null or c."delete") 
     and m.preview is not null
     and t."type" = %s
-	and t.abs_filename not in %s    
+	and t.abs_filename not in %s   
 order by
     m.abs_filename desc
 limit 5;
 '''
 
-_insert_ai_descr_sql = f'''
-insert
-	into
-	core.ai_description (abs_filename,
-	caption_llava)
-values (%s,
-%s)
-on
-conflict (abs_filename) 
-do
-update
-set
-	caption_llava = %s;
+_caption_conf_select_sql = '''
+select id, model, prompt from core.current_caption_conf;
 '''
 
-_update_log_sql = '''
+_caption_insert_sql = f'''
+insert
+	into
+	core.caption
+(hash, caption_conf_id,	caption)
+values(%s, %s, %s);
+'''
+
+_log_update_sql = '''
 update
 	log.core_log
 set
@@ -74,7 +72,7 @@ where
 '''
 
 
-@dag(dag_id=DagName.ADD_MISSING_AI_DESCR, max_active_runs=1, default_args=dag_args_noretry,
+@dag(dag_id=DagName.ADD_MISSING_CAPTION, max_active_runs=1, default_args=dag_args_noretry,
      schedule=schedule, tags=tags)
 def add_missing_ai_descr():
     assert_ai_descr_helper_available = CheckHelperAvailableOperator(
@@ -119,30 +117,33 @@ def _add_missing_ai_descr(tree_type: str):
         }
 
     while True:
-        records = pg_hook.get_records(_missing_ai_descr_select_sql,
+        records = pg_hook.get_records(_missing_caption_select_sql,
                                       parameters=[tree_type, tuple(broken_previews_abs_filenames)])
         if not records:
             return result_dict()
 
+        cc_id, model, prompt = pg_hook.get_records(_caption_conf_select_sql)[0]
+        print(model)
+
         for r in records:
-            abs_filename, preview, has_more_records = r[0], r[1], r[2]
-            print(abs_filename)
+            _hash, preview, abs_filename, has_more_records = r[0], r[1], r[2], r[3]
+            print(_hash)
             if len(preview) > 1000:
-                image_base64 =  base64.b64encode(io.BytesIO(preview).read()).decode('utf-8')
+                image_base64 = base64.b64encode(io.BytesIO(preview).read()).decode('utf-8')
                 payload = {
-                    "model": "llava:latest",
-                    "prompt": "Describe in as many details as possible What is shown in this image, including the style of the image.",
+                    "model": model,
+                    "prompt": prompt,
                     "stream": False,
                     "images": [image_base64]
                 }
                 headers = {"Content-Type": "application/json"}
-                print(f"posting image data of {abs_filename} to {endpoint}")
+                print(f"posting image data of {abs_filename} ({_hash}) to {endpoint}")
                 response = requests.post(endpoint, json=payload, headers=headers)
                 if response.status_code == 200:
                     result = response.json()
                     captions = result.get('response')
-                    pg_hook.run(_insert_ai_descr_sql, parameters=[abs_filename, captions, captions])
-                    pg_hook.run(_update_log_sql, parameters=[abs_filename])
+                    pg_hook.run(_caption_insert_sql, parameters=[_hash, cc_id, captions])
+                    pg_hook.run(_log_update_sql, parameters=[abs_filename])
                 else:
                     print(response.content)
                     raise AirflowException(f'Helper returned {response.status_code} for {abs_filename}')
