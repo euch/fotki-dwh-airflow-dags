@@ -70,8 +70,6 @@ where
 	and (m.abs_filename is null --metadata does not exist 
 		-- or metadata exist, but has empty values 
 		or m.hash is null
-		or m.exif is null
-		or m.preview is null
 	)
 	and t.abs_filename not in %s
 order by
