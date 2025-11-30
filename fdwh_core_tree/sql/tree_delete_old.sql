@@ -25,7 +25,7 @@ insert into log.core_deleted_log (
   tree_del_ts,
   tree_add_ts,
   metadata_add_ts,
-  ai_description_add_ts
+  caption_add_ts
 )
 select
   abs_filename,
@@ -33,7 +33,7 @@ select
   now(),
   tree_add_ts,
   metadata_add_ts,
-  ai_description_add_ts
+  caption_add_ts
 from
   log.core_log
 where

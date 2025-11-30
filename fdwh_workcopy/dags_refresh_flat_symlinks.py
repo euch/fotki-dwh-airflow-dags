@@ -36,7 +36,7 @@ def _find_rightmost_date(path: str):
     return rightmost_match['date']
 
 
-schedule = (Asset(AssetName.CORE_AI_DESCR_UPDATED) | Asset(AssetName.CORE_TREE_UPDATED))
+schedule = (Asset(AssetName.CORE_CAPTION_UPDATED) | Asset(AssetName.CORE_TREE_UPDATED))
 tags = {
     DagTag.SSH,
     DagTag.FDWH_STORAGE_IO,

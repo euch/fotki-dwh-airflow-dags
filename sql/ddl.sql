@@ -10,20 +10,7 @@ CREATE SEQUENCE core.caption_conf_id_seq
 	MAXVALUE 2147483647
 	START 1
 	CACHE 1
-	NO CYCLE;-- core.ai_description definition
-
--- Drop table
-
--- DROP TABLE core.ai_description;
-
-CREATE TABLE core.ai_description (
-	abs_filename varchar NOT NULL,
-	caption_vit_gpt2 varchar NULL,
-	caption_llava varchar NULL
-);
-
-
--- core.caption definition
+	NO CYCLE;-- core.caption definition
 
 -- Drop table
 
@@ -368,7 +355,7 @@ CREATE TABLE log.core_deleted_log (
 	tree_del_ts timestamptz NOT NULL,
 	tree_add_ts timestamptz NOT NULL,
 	metadata_add_ts timestamptz NULL,
-	ai_description_add_ts timestamptz NULL,
+	caption_add_ts timestamptz NULL,
 	hash varchar NULL,
 	CONSTRAINT edm_deleted_log_pk PRIMARY KEY (abs_filename, tree_del_ts)
 );
@@ -384,7 +371,7 @@ CREATE TABLE log.core_log (
 	abs_filename varchar NOT NULL,
 	tree_add_ts timestamptz NOT NULL,
 	metadata_add_ts timestamptz NULL,
-	ai_description_add_ts timestamptz NULL,
+	caption_add_ts timestamptz NULL,
 	hash varchar NULL,
 	CONSTRAINT edm_log_pk PRIMARY KEY (abs_filename)
 );

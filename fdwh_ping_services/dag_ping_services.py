@@ -31,9 +31,5 @@ def dag():
         task_id="check_ollama",
         url=Variable.get(VariableName.OLLAMA_ENDPOINT)) >> finish
 
-    CheckHelperAvailableOperator(
-        task_id="check_ai_desc",
-        url=Variable.get(VariableName.AI_DESCR_ENDPOINT)) >> finish
-
 
 dag()

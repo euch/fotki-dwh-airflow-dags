@@ -65,7 +65,7 @@ class AssetName:
     RAW_TREES_UPDATED = 'fdwh_raw_trees_updated'
     CORE_TREE_UPDATED = 'fdwh_core_tree_updated'
     CORE_METADATA_UPDATED = 'fdwh_core_metadata_updated'
-    CORE_AI_DESCR_UPDATED = 'fdwh_core_ai_description_updated'
+    CORE_CAPTION_UPDATED = 'fdwh_core_caption_updated'
 
 
 class ImportSettings:
@@ -90,7 +90,6 @@ class VariableName:
     STORAGE_ZFS_DATASET_TRASH = _var_prefix + 'STORAGE_ZFS_DATASET_TRASH'
     STORAGE_ZFS_DATASET_WORKCOPY = _var_prefix + 'STORAGE_ZFS_DATASET_WORKCOPY'
 
-    AI_DESCR_ENDPOINT = _var_prefix + 'AI_DESCR_ENDPOINT'
     OLLAMA_ENDPOINT = _var_prefix + 'OLLAMA_ENDPOINT'
     METADATA_ENDPOINT = _var_prefix + 'METADATA_ENDPOINT'
     EXIF_TS_ENDPOINT = _var_prefix + 'EXIF_TS_ENDPOINT'

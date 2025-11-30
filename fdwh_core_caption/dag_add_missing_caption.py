@@ -66,7 +66,7 @@ _log_update_sql = '''
 update
 	log.core_log
 set
-	ai_description_add_ts = now()
+	caption_add_ts = now()
 where
 	abs_filename = %s
 '''
@@ -74,38 +74,38 @@ where
 
 @dag(dag_id=DagName.ADD_MISSING_CAPTION, max_active_runs=1, default_args=dag_args_noretry,
      schedule=schedule, tags=tags)
-def add_missing_ai_descr():
-    assert_ai_descr_helper_available = CheckHelperAvailableOperator(
-        task_id='assert_ai_descr_helper_available',
-        url=Variable.get(VariableName.AI_DESCR_ENDPOINT))
+def dag():
+    assert_ollama_available = CheckHelperAvailableOperator(
+        task_id='assert_ollama_available',
+        url=Variable.get(VariableName.OLLAMA_ENDPOINT))
 
     @task(execution_timeout=max_duration)
-    def add_missing_ai_descr_collection():
-        return _add_missing_ai_descr('collection')
+    def add_missing_caption_collection():
+        return _add_missing_caption('collection')
 
     @task(execution_timeout=max_duration)
-    def add_missing_ai_descr_archive():
-        return _add_missing_ai_descr('archive')
+    def add_missing_caption_archive():
+        return _add_missing_caption('archive')
 
     @task(execution_timeout=max_duration)
-    def add_missing_ai_descr_trash():
-        return _add_missing_ai_descr('trash')
+    def add_missing_caption_trash():
+        return _add_missing_caption('trash')
 
-    @task(outlets=[Asset(AssetName.CORE_AI_DESCR_UPDATED)])
+    @task(outlets=[Asset(AssetName.CORE_CAPTION_UPDATED)])
     def end():
         pass
 
-    assert_ai_descr_helper_available >> [
-        add_missing_ai_descr_collection(),
-        add_missing_ai_descr_trash(),
-        add_missing_ai_descr_archive()
+    assert_ollama_available >> [
+        add_missing_caption_collection(),
+        add_missing_caption_trash(),
+        add_missing_caption_archive()
     ] >> end()
 
 
-add_missing_ai_descr()
+dag()
 
 
-def _add_missing_ai_descr(tree_type: str):
+def _add_missing_caption(tree_type: str):
     pg_hook = PostgresHook.get_hook(Conn.POSTGRES)
     endpoint = Variable.get(VariableName.OLLAMA_ENDPOINT)
 
