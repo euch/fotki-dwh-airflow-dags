@@ -155,6 +155,27 @@ CREATE TABLE dm.files_and_types (
 );
 
 
+-- dm.images_collection definition
+
+-- Drop table
+
+-- DROP TABLE dm.images_collection;
+
+CREATE TABLE dm.images_collection (
+	abs_filename varchar NOT NULL,
+	rel_filename varchar NOT NULL,
+	preview bytea NULL,
+	latest_caption text NULL,
+	exif json NULL,
+	CONSTRAINT images_collection_pk PRIMARY KEY (abs_filename)
+);
+
+
+-- dm.images_collection foreign keys
+
+ALTER TABLE dm.images_collection ADD CONSTRAINT images_collection_tree_rel_path_fk FOREIGN KEY (abs_filename) REFERENCES core.tree_rel_path(abs_filename) ON DELETE CASCADE ON UPDATE RESTRICT;
+
+
 -- dm.all_body_counts source
 
 CREATE OR REPLACE VIEW dm.all_body_counts

@@ -22,7 +22,11 @@ def update_dm():
         conn_id=Conn.POSTGRES,
         sql='sql/dm_file_types_insert.sql',
         do_xcom_push=False
-    )
+    ) >> SQLExecuteQueryOperator(
+        task_id='dm_images_collection_insert',
+        conn_id=Conn.POSTGRES,
+        sql='sql/dm_images_collection_insert.sql',
+        do_xcom_push=False)
 
 
 update_dm()
