@@ -87,6 +87,20 @@ CREATE TABLE core.metadata (
 CREATE INDEX metadata_hash_idx ON core.metadata USING btree (hash);
 
 
+-- core.tree_rel_path definition
+
+-- Drop table
+
+-- DROP TABLE core.tree_rel_path;
+
+CREATE TABLE core.tree_rel_path (
+	abs_filename varchar NOT NULL,
+	rel_filename varchar NOT NULL,
+	CONSTRAINT tree_rel_path_pk PRIMARY KEY (abs_filename),
+	CONSTRAINT tree_rel_path_fk FOREIGN KEY (abs_filename) REFERENCES core.tree(abs_filename) ON DELETE CASCADE ON UPDATE RESTRICT
+);
+
+
 -- core.current_caption_conf source
 
 CREATE OR REPLACE VIEW core.current_caption_conf
