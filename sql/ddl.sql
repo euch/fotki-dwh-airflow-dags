@@ -119,6 +119,16 @@ AS SELECT DISTINCT ON (selection_ts) caption_conf_id
   ORDER BY selection_ts DESC
  LIMIT 1;
 
+
+-- core.latest_caption source
+
+CREATE OR REPLACE VIEW core.latest_caption
+AS SELECT DISTINCT ON (create_ts, hash) hash,
+    caption,
+    delete
+   FROM core.caption c
+  ORDER BY create_ts DESC;
+
 -- DROP SCHEMA dm;
 
 CREATE SCHEMA dm AUTHORIZATION postgres;
@@ -213,43 +223,6 @@ AS SELECT (string_to_array(abs_filename::text, '/'::text, NULL::text))[5] AS col
   WHERE type::text = 'collection'::text
   GROUP BY ((string_to_array(abs_filename::text, '/'::text, NULL::text))[5])
   ORDER BY (count(*)) DESC, ((string_to_array(abs_filename::text, '/'::text, NULL::text))[5]);
-
-
--- dm.col_images source
-
-CREATE OR REPLACE VIEW dm.col_images
-AS SELECT t.abs_filename,
-    split_part(t.abs_filename::text, '/'::text, '-1'::integer) AS short_filename,
-    "left"(t.abs_filename::text, length(t.abs_filename::text) - POSITION(('/'::text) IN (reverse(t.abs_filename::text)))) AS directory,
-    m.preview,
-    lc.caption::character varying AS caption
-   FROM core.tree t
-     LEFT JOIN core.metadata m ON m.abs_filename::text = t.abs_filename::text
-     LEFT JOIN dm.latest_caption lc ON lc.abs_filename::text = t.abs_filename::text
-  WHERE t.type::text = 'collection'::text
-  ORDER BY t.abs_filename DESC;
-
-
--- dm.col_images_birds source
-
-CREATE OR REPLACE VIEW dm.col_images_birds
-AS SELECT abs_filename,
-    short_filename,
-    directory,
-    preview,
-    caption
-   FROM dm.col_images c
-  WHERE caption::text ~~* '%bird%'::text OR abs_filename::text ~~* '%птиц%'::text;
-
-
--- dm.col_images_video source
-
-CREATE OR REPLACE VIEW dm.col_images_video
-AS SELECT abs_filename,
-    short_filename,
-    directory
-   FROM dm.col_images
-  WHERE upper(split_part(short_filename, '.'::text, '-1'::integer)) = ANY (ARRAY['MOV'::text, 'MP4'::text]);
 
 
 -- dm.col_noexif source

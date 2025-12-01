@@ -36,7 +36,7 @@ select
     END as has_more_pages
 from
     core.metadata m
-left join core.caption c on
+left join core.latest_caption c on
     c.hash = m.hash
 join core.tree t on
     t.abs_filename = m.abs_filename
@@ -79,28 +79,19 @@ def dag():
         task_id='assert_ollama_available',
         url=Variable.get(VariableName.OLLAMA_ENDPOINT))
 
-    @task(execution_timeout=max_duration)
+    @task()
     def add_missing_caption_collection():
         return _add_missing_caption('collection')
 
-    @task(execution_timeout=max_duration)
+    @task()
     def add_missing_caption_archive():
         return _add_missing_caption('archive')
-
-    @task(execution_timeout=max_duration)
-    def add_missing_caption_trash():
-        return _add_missing_caption('trash')
 
     @task(outlets=[Asset(AssetName.CORE_CAPTION_UPDATED)])
     def end():
         pass
 
-    assert_ollama_available >> [
-        add_missing_caption_collection(),
-        add_missing_caption_trash(),
-        add_missing_caption_archive()
-    ] >> end()
-
+    assert_ollama_available >> add_missing_caption_collection() >> add_missing_caption_archive() >> end()
 
 dag()
 
