@@ -19,7 +19,7 @@ select
 from
 	core.tree_rel_path trp
 join core.tree t on t.abs_filename = trp.abs_filename
-join core.metadata m on	m.abs_filename = trp.abs_filename
-join latest_caption lc on lc.hash = m.hash
+left join core.metadata m on m.abs_filename = trp.abs_filename
+left join latest_caption lc on lc.hash = m.hash
 where t."type" = 'collection'
 on conflict (abs_filename) do nothing;
