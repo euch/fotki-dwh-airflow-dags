@@ -27,6 +27,7 @@ tags = {
 
 _missing_caption_select_sql = '''
 select
+    distinct on (m.hash)
     m.hash,
     m.preview,
     m.abs_filename,
@@ -36,17 +37,16 @@ select
     END as has_more_pages
 from
     core.metadata m
-left join core.latest_caption c on
+left join core.caption c on
     c.hash = m.hash
 join core.tree t on
     t.abs_filename = m.abs_filename
 where
-    (c.hash is null or c."delete") 
+    c.hash is null
     and m.preview is not null
     and t."type" = %s
-	and t.abs_filename not in %s   
 order by
-    m.abs_filename desc
+    m.hash, m.abs_filename desc
 limit 5;
 '''
 
@@ -100,18 +100,8 @@ def _add_missing_caption(tree_type: str):
     pg_hook = PostgresHook.get_hook(Conn.POSTGRES)
     endpoint = Variable.get(VariableName.OLLAMA_ENDPOINT)
 
-    broken_previews_abs_filenames = {''}
-
-    def result_dict() -> dict:
-        return {
-            'broken_previews': ','.join(broken_previews_abs_filenames),
-        }
-
     while True:
-        records = pg_hook.get_records(_missing_caption_select_sql,
-                                      parameters=[tree_type, tuple(broken_previews_abs_filenames)])
-        if not records:
-            return result_dict()
+        records = pg_hook.get_records(_missing_caption_select_sql, parameters=[tree_type])
 
         cc_id, model, prompt = pg_hook.get_records(_caption_conf_select_sql)[0]
         print(model)
@@ -119,28 +109,24 @@ def _add_missing_caption(tree_type: str):
         for r in records:
             _hash, preview, abs_filename, has_more_records = r[0], r[1], r[2], r[3]
             print(_hash)
-            if len(preview) > 1000:
-                image_base64 = base64.b64encode(io.BytesIO(preview).read()).decode('utf-8')
-                payload = {
-                    "model": model,
-                    "prompt": prompt,
-                    "stream": False,
-                    "images": [image_base64]
-                }
-                headers = {"Content-Type": "application/json"}
-                print(f"posting image data of {abs_filename} ({_hash}) to {endpoint}")
-                response = requests.post(endpoint, json=payload, headers=headers)
-                if response.status_code == 200:
-                    result = response.json()
-                    captions = result.get('response')
-                    pg_hook.run(_caption_insert_sql, parameters=[_hash, cc_id, captions])
-                    pg_hook.run(_log_update_sql, parameters=[abs_filename])
-                else:
-                    print(response.content)
-                    raise AirflowException(f'Helper returned {response.status_code} for {abs_filename}')
+            image_base64 = base64.b64encode(io.BytesIO(preview).read()).decode('utf-8')
+            payload = {
+                "model": model,
+                "prompt": prompt,
+                "stream": False,
+                "images": [image_base64]
+            }
+            headers = {"Content-Type": "application/json"}
+            print(f"posting image data of {abs_filename} ({_hash}) to {endpoint}")
+            response = requests.post(endpoint, json=payload, headers=headers)
+            if response.status_code == 200:
+                result = response.json()
+                captions = result.get('response')
+                pg_hook.run(_caption_insert_sql, parameters=[_hash, cc_id, captions])
+                pg_hook.run(_log_update_sql, parameters=[abs_filename])
             else:
-                broken_previews_abs_filenames.add(abs_filename)
-                print("Skipping: Preview is broken")
+                print(response.content)
+                raise AirflowException(f'Helper returned {response.status_code} for {abs_filename}')
 
             if not has_more_records:
-                return result_dict()
+                return

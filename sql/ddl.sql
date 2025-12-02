@@ -21,8 +21,7 @@ CREATE TABLE core.caption (
 	caption_conf_id int4 NOT NULL,
 	caption text NOT NULL,
 	create_ts timestamptz DEFAULT now() NOT NULL,
-	"delete" bool DEFAULT false NOT NULL,
-	delete_ts timestamptz NULL
+	CONSTRAINT caption_pk PRIMARY KEY (hash, caption_conf_id)
 );
 CREATE INDEX caption_caption_idx ON core.caption USING btree (caption);
 
@@ -124,8 +123,7 @@ AS SELECT DISTINCT ON (selection_ts) caption_conf_id
 
 CREATE OR REPLACE VIEW core.latest_caption
 AS SELECT DISTINCT ON (create_ts, hash) hash,
-    caption,
-    delete
+    caption
    FROM core.caption c
   ORDER BY create_ts DESC;
 
@@ -163,27 +161,6 @@ CREATE TABLE dm.files_and_types (
 	file_type text NULL,
 	cnt int8 NULL
 );
-
-
--- dm.images_collection definition
-
--- Drop table
-
--- DROP TABLE dm.images_collection;
-
-CREATE TABLE dm.images_collection (
-	abs_filename varchar NOT NULL,
-	rel_filename varchar NOT NULL,
-	preview bytea NULL,
-	latest_caption text NULL,
-	exif json NULL,
-	CONSTRAINT images_collection_pk PRIMARY KEY (abs_filename)
-);
-
-
--- dm.images_collection foreign keys
-
-ALTER TABLE dm.images_collection ADD CONSTRAINT images_collection_tree_rel_path_fk FOREIGN KEY (abs_filename) REFERENCES core.tree_rel_path(abs_filename) ON DELETE CASCADE ON UPDATE RESTRICT;
 
 
 -- dm.all_body_counts source
@@ -225,6 +202,37 @@ AS SELECT (string_to_array(abs_filename::text, '/'::text, NULL::text))[5] AS col
   ORDER BY (count(*)) DESC, ((string_to_array(abs_filename::text, '/'::text, NULL::text))[5]);
 
 
+-- dm.col_images source
+
+CREATE OR REPLACE VIEW dm.col_images
+AS SELECT trp.abs_filename,
+    trp.rel_filename,
+    split_part(t.abs_filename::text, '/'::text, '-1'::integer) AS short_filename,
+    "left"(t.abs_filename::text, length(t.abs_filename::text) - POSITION(('/'::text) IN (reverse(t.abs_filename::text)))) AS directory,
+    m.preview,
+    lc.caption AS latest_caption,
+    m.exif
+   FROM core.tree_rel_path trp
+     JOIN core.tree t ON t.abs_filename::text = trp.abs_filename::text
+     LEFT JOIN core.metadata m ON m.abs_filename::text = trp.abs_filename::text
+     LEFT JOIN core.latest_caption lc ON lc.hash::text = m.hash::text
+  WHERE t.type::text = 'collection'::text AND (upper(split_part(trp.rel_filename::text, '.'::text, '-1'::integer)) = ANY (ARRAY['JPG'::text, 'JPEG'::text, 'PNG'::text, 'GIF'::text, 'HEIC'::text, 'NEF'::text, 'RW2'::text]));
+
+
+-- dm.col_images_birds source
+
+CREATE OR REPLACE VIEW dm.col_images_birds
+AS SELECT abs_filename,
+    rel_filename,
+    short_filename,
+    directory,
+    preview,
+    latest_caption,
+    exif
+   FROM dm.col_images
+  WHERE latest_caption ~~* '%bird%'::text OR rel_filename::text ~~* '%птиц%'::text;
+
+
 -- dm.col_noexif source
 
 CREATE OR REPLACE VIEW dm.col_noexif
@@ -245,6 +253,18 @@ AS SELECT m.abs_filename,
    FROM core.metadata m
      JOIN core.tree t ON t.abs_filename::text = m.abs_filename::text AND t.type::text = 'collection'::text
   WHERE m.preview IS NULL;
+
+
+-- dm.col_videos source
+
+CREATE OR REPLACE VIEW dm.col_videos
+AS SELECT trp.abs_filename,
+    trp.rel_filename,
+    split_part(t.abs_filename::text, '/'::text, '-1'::integer) AS short_filename,
+    "left"(t.abs_filename::text, length(t.abs_filename::text) - POSITION(('/'::text) IN (reverse(t.abs_filename::text)))) AS directory
+   FROM core.tree_rel_path trp
+     JOIN core.tree t ON t.abs_filename::text = trp.abs_filename::text
+  WHERE t.type::text = 'collection'::text AND (upper(split_part(trp.rel_filename::text, '.'::text, '-1'::integer)) = ANY (ARRAY['MOV'::text, 'MP4'::text]));
 
 
 -- dm.ignored_files source
@@ -274,17 +294,6 @@ AS SELECT abs_filename,
   WHERE NOT (EXISTS ( SELECT 1
            FROM raw.tree_all t
           WHERE t.abs_filename::text = e.abs_filename::text));
-
-
--- dm.latest_caption source
-
-CREATE OR REPLACE VIEW dm.latest_caption
-AS SELECT DISTINCT ON (c.create_ts, c.hash) m.abs_filename,
-    c.caption
-   FROM core.caption c
-     JOIN core.metadata m ON m.hash::text = c.hash::text
-  WHERE c.delete IS FALSE
-  ORDER BY c.create_ts DESC;
 
 
 -- dm.weird_files source
