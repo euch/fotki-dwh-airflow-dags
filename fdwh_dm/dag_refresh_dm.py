@@ -3,7 +3,7 @@ from airflow.sdk import dag, Asset
 
 from fdwh_config import *
 
-schedule = (Asset(AssetName.CORE_TREE_UPDATED) | Asset(AssetName.CORE_METADATA_UPDATED) | Asset(AssetName.CORE_AI_DESCR_UPDATED))
+schedule = (Asset(AssetName.CORE_TREE_UPDATED) | Asset(AssetName.CORE_METADATA_UPDATED) | Asset(AssetName.CORE_CAPTION_UPDATED))
 tags = {
     DagTag.FDWH_MARTS,
     DagTag.PG,

@@ -36,7 +36,7 @@ def _find_rightmost_date(path: str):
     return rightmost_match['date']
 
 
-schedule = (Asset(AssetName.CORE_AI_DESCR_UPDATED) | Asset(AssetName.CORE_TREE_UPDATED))
+schedule = (Asset(AssetName.CORE_CAPTION_UPDATED) | Asset(AssetName.CORE_TREE_UPDATED))
 tags = {
     DagTag.SSH,
     DagTag.FDWH_STORAGE_IO,
@@ -86,7 +86,7 @@ def refresh_flat_symlinks_video():
     @task
     def find_video_dirs() -> list[(str, str)]:
         pg_hook = PostgresHook.get_hook(Conn.POSTGRES)
-        sql = 'select distinct directory from dm.col_images_video '
+        sql = 'select distinct directory from dm.col_videos'
         records = pg_hook.get_records(sql)
         return list(map(lambda row: row[0], records))
 
@@ -94,7 +94,7 @@ def refresh_flat_symlinks_video():
     def create_symlink(dir: str) -> None:
         cmds = []
         pg_hook = PostgresHook.get_hook(Conn.POSTGRES)
-        sql = 'select abs_filename, short_filename from dm.col_images_video where directory = %s'
+        sql = 'select abs_filename, short_filename from dm.col_videos where directory = %s'
         for row in pg_hook.get_records(sql, parameters=[dir]):
             abs_filename, short_filename = row[0], row[1]
             timestamp = _find_rightmost_date(abs_filename)
