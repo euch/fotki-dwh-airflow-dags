@@ -103,6 +103,9 @@ def _add_missing_caption(tree_type: str):
     while True:
         records = pg_hook.get_records(_missing_caption_select_sql, parameters=[tree_type])
 
+        if len(records) == 0:
+            return
+
         cc_id, model, prompt = pg_hook.get_records(_caption_conf_select_sql)[0]
         print(model)
 
