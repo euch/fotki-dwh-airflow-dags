@@ -130,6 +130,22 @@ AS SELECT DISTINCT ON (create_ts, hash) hash,
 -- DROP SCHEMA dm;
 
 CREATE SCHEMA dm AUTHORIZATION postgres;
+-- dm.caption_counts definition
+
+-- Drop table
+
+-- DROP TABLE dm.caption_counts;
+
+CREATE TABLE dm.caption_counts (
+	ts timetz DEFAULT now() NOT NULL,
+	"type" varchar NOT NULL,
+	total_count int8 NOT NULL,
+	has_preview_count int8 NOT NULL,
+	has_caption_count int8 NOT NULL,
+	caption_conf_id int4 NULL
+);
+
+
 -- dm.counts definition
 
 -- Drop table
@@ -211,7 +227,10 @@ AS SELECT trp.abs_filename,
     "left"(t.abs_filename::text, length(t.abs_filename::text) - POSITION(('/'::text) IN (reverse(t.abs_filename::text)))) AS directory,
     m.preview,
     lc.caption AS latest_caption,
-    m.exif
+    m.exif,
+    m.exif ->> 'EXIF BodySerialNumber'::text AS exif_body_sn,
+    m.exif ->> 'Image Make'::text AS exif_body_maker,
+    m.exif ->> 'Image Model'::text AS exif_body_model
    FROM core.tree_rel_path trp
      JOIN core.tree t ON t.abs_filename::text = trp.abs_filename::text
      LEFT JOIN core.metadata m ON m.abs_filename::text = trp.abs_filename::text
@@ -233,15 +252,17 @@ AS SELECT abs_filename,
   WHERE latest_caption ~~* '%bird%'::text OR rel_filename::text ~~* '%птиц%'::text;
 
 
--- dm.col_noexif source
+-- dm.col_missing_caption source
 
-CREATE OR REPLACE VIEW dm.col_noexif
-AS SELECT m.abs_filename,
-    regexp_replace(m.abs_filename::text, '^.*[.]([^.]+)$'::text, '\1'::text) AS file_type,
-    m.preview
+CREATE OR REPLACE VIEW dm.col_missing_caption
+AS SELECT DISTINCT ON (m.hash) m.hash,
+    m.preview,
+    m.abs_filename
    FROM core.metadata m
-     JOIN core.tree t ON t.abs_filename::text = m.abs_filename::text AND t.type::text = 'collection'::text
-  WHERE m.exif IS NULL;
+     LEFT JOIN core.caption c ON c.hash::text = m.hash::text
+     JOIN core.tree t ON t.abs_filename::text = m.abs_filename::text
+  WHERE c.hash IS NULL AND m.preview IS NOT NULL AND t.type::text = 'collection'::text
+  ORDER BY m.hash, m.abs_filename DESC;
 
 
 -- dm.col_nopreview source

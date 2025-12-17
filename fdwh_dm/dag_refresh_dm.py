@@ -1,9 +1,17 @@
+from datetime import timedelta
+
 from airflow.providers.common.sql.operators.sql import SQLExecuteQueryOperator
 from airflow.sdk import dag, Asset
+from airflow.timetables.assets import AssetOrTimeSchedule
+from airflow.timetables.trigger import DeltaTriggerTimetable
 
 from fdwh_config import *
 
-schedule = (Asset(AssetName.CORE_TREE_UPDATED) | Asset(AssetName.CORE_METADATA_UPDATED) | Asset(AssetName.CORE_CAPTION_UPDATED))
+assets = (Asset(AssetName.CORE_TREE_UPDATED) | Asset(AssetName.CORE_METADATA_UPDATED) | Asset(
+    AssetName.CORE_CAPTION_UPDATED))
+schedule = AssetOrTimeSchedule(
+    timetable=DeltaTriggerTimetable(timedelta(hours=1)),
+    assets=assets)
 tags = {
     DagTag.FDWH_MARTS,
     DagTag.PG,
@@ -16,13 +24,31 @@ def update_dm():
     SQLExecuteQueryOperator(
         task_id='dm_counts_insert',
         conn_id=Conn.POSTGRES,
-        sql='sql/dm_counts_insert.sql'
-    ) >> SQLExecuteQueryOperator(
+        sql='sql/dm_counts_insert.sql')
+
+    SQLExecuteQueryOperator(
         task_id='dm_file_types_insert',
         conn_id=Conn.POSTGRES,
         sql='sql/dm_file_types_insert.sql',
-        do_xcom_push=False
-    )
+        do_xcom_push=False)
+
+    SQLExecuteQueryOperator(
+        task_id='dm_total_counts_insert',
+        conn_id=Conn.POSTGRES,
+        sql='sql/dm_total_count_by_type_insert.sql',
+        do_xcom_push=False)
+
+    SQLExecuteQueryOperator(
+        task_id='dm_preview_count_by_type_insert',
+        conn_id=Conn.POSTGRES,
+        sql='sql/dm_preview_count_by_type_insert.sql',
+        do_xcom_push=False)
+
+    SQLExecuteQueryOperator(
+        task_id='caption_count_by_type',
+        conn_id=Conn.POSTGRES,
+        sql='sql/dm_caption_count_by_type.sql',
+        do_xcom_push=False)
 
 
 update_dm()
