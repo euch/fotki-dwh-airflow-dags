@@ -6,6 +6,7 @@ from airflow.timetables.trigger import DeltaTriggerTimetable
 from airflow.utils.trigger_rule import TriggerRule
 
 from fdwh_config import *
+from fdwh_op_check_bucket_available import CheckBucketHelperAvailableOperator
 from fdwh_op_check_helper_available import CheckHelperAvailableOperator
 
 schedule = DeltaTriggerTimetable(timedelta(hours=1))
@@ -30,6 +31,13 @@ def dag():
     CheckHelperAvailableOperator(
         task_id="check_ollama",
         url=Variable.get(VariableName.OLLAMA_ENDPOINT)) >> finish
+
+    for var_name in VariableName.BUCKETS:
+        bucket_name = Variable.get(var_name)
+        CheckBucketHelperAvailableOperator(
+            task_id=f'check_bucket_{bucket_name}',
+            connection=Conn.MINIO,
+            bucket_name=bucket_name)
 
 
 dag()
