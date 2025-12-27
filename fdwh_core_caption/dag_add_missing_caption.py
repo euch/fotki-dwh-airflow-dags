@@ -79,24 +79,38 @@ def dag():
         task_id='assert_ollama_available',
         url=Variable.get(VariableName.OLLAMA_ENDPOINT))
 
-    @task()
-    def add_missing_caption_collection():
-        return _add_missing_caption('collection')
+    @task
+    def get_settings():
+        pg_hook = PostgresHook.get_hook(Conn.POSTGRES)
+        row = pg_hook.get_records(_caption_conf_select_sql)[0]
+        return {
+            "caption_conf_id": row[0],
+            "model": row[1],
+            "prompt": row[1]
+        }
 
     @task()
-    def add_missing_caption_archive():
-        return _add_missing_caption('archive')
+    def add_missing_caption_collection(settings: dict):
+        return _add_missing_caption(settings, 'collection')
+
+    @task()
+    def add_missing_caption_archive(settings: dict):
+        return _add_missing_caption(settings, 'archive')
 
     @task(outlets=[Asset(AssetName.CORE_CAPTION_UPDATED)])
     def end():
         pass
 
-    assert_ollama_available >> add_missing_caption_collection() >> add_missing_caption_archive() >> end()
+    settings = get_settings()
+    process_collection = add_missing_caption_collection(settings)
+    process_archive = add_missing_caption_archive(settings)
+    assert_ollama_available >> process_collection >> process_archive >> end()
+
 
 dag()
 
 
-def _add_missing_caption(tree_type: str):
+def _add_missing_caption(settings: dict, tree_type: str):
     pg_hook = PostgresHook.get_hook(Conn.POSTGRES)
     endpoint = Variable.get(VariableName.OLLAMA_ENDPOINT)
 
@@ -106,16 +120,12 @@ def _add_missing_caption(tree_type: str):
         if len(records) == 0:
             return
 
-        cc_id, model, prompt = pg_hook.get_records(_caption_conf_select_sql)[0]
-        print(model)
-
-        for r in records:
-            _hash, preview, abs_filename, has_more_records = r[0], r[1], r[2], r[3]
+        for _hash, preview, abs_filename, has_more_records in records:
             print(_hash)
             image_base64 = base64.b64encode(io.BytesIO(preview).read()).decode('utf-8')
             payload = {
-                "model": model,
-                "prompt": prompt,
+                "model": settings['model'],
+                "prompt": settings['prompt'],
                 "stream": False,
                 "images": [image_base64]
             }
@@ -125,7 +135,7 @@ def _add_missing_caption(tree_type: str):
             if response.status_code == 200:
                 result = response.json()
                 captions = result.get('response')
-                pg_hook.run(_caption_insert_sql, parameters=[_hash, cc_id, captions])
+                pg_hook.run(_caption_insert_sql, parameters=[_hash, settings['caption_conf_id'], captions])
                 pg_hook.run(_log_update_sql, parameters=[abs_filename])
             else:
                 print(response.content)
