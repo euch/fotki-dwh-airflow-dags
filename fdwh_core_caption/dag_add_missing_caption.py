@@ -86,7 +86,7 @@ def dag():
         return {
             "caption_conf_id": row[0],
             "model": row[1],
-            "prompt": row[1]
+            "prompt": row[2]
         }
 
     @task()
