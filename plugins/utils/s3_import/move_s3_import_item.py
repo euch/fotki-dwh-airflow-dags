@@ -1,7 +1,7 @@
 import shutil
 from contextlib import contextmanager
 
-from s3_import.dto.import_item import GoodImportItem, DuplicateImportItem, UnrecognizedImportItem, ImportItem
+from dto.s3_import.import_item import GoodImportItem, DuplicateImportItem, UnrecognizedImportItem, ImportItem
 
 
 @contextmanager

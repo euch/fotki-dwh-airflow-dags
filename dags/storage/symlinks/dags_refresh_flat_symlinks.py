@@ -4,7 +4,7 @@ from airflow.models import Variable
 from airflow.providers.postgres.hooks.postgres import PostgresHook
 from airflow.sdk import Asset, dag, task
 
-from common import exec_remote_cmd
+from utils.ssh_utils import exec_remote_cmd
 from config import *
 
 

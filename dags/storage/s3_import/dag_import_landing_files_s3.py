@@ -8,15 +8,14 @@ from airflow.providers.samba.hooks.samba import SambaHook
 from airflow.providers.standard.operators.empty import EmptyOperator
 from airflow.providers.standard.operators.python import BranchPythonOperator
 from airflow.providers.standard.operators.trigger_dagrun import TriggerDagRunOperator
-from airflow.sdk import Asset, dag, Variable, task
+from airflow.sdk import Asset, dag, Variable, task, TriggerRule
 from airflow.timetables.trigger import DeltaTriggerTimetable
-from airflow.utils.trigger_rule import TriggerRule
+from dto.s3_import.import_item import ImportItem
+from utils.s3_import.create_import_item import create_import_item
+from utils.s3_import.move_s3_import_item import move_s3_import_item
 
+from operators.check_helper_available import CheckHelperAvailableOperator
 from config import *
-from s3_import.dto.import_item import ImportItem
-from s3_import.utils.create_import_item import create_import_item
-from s3_import.utils.move_s3_import_item import move_s3_import_item
-from check_helper_available import CheckHelperAvailableOperator
 
 schedule = DeltaTriggerTimetable(timedelta(minutes=1))
 tags = {
@@ -56,7 +55,7 @@ def dag():
 
     @task
     def s3_list() -> list[str]:
-        s3_hook = S3Hook(aws_conn_id=Conn.MINIO).get_client_type('s3')
+        s3_hook = S3Hook(aws_conn_id=Conn.MINIO)
         return s3_hook.list_keys(bucket_name=Variable.get(VariableName.BUCKET_LANDING))
 
     _s3_list = s3_list()
@@ -82,12 +81,14 @@ def dag():
 
     _s3_import = s3_import.expand(key=_s3_list)
 
+    import_sync = EmptyOperator(task_id="import_sync", trigger_rule=TriggerRule.ALL_DONE)
+
     s3_list_remaining = S3ListOperator(
         task_id='s3_list_remaining',
         bucket=Variable.get(VariableName.BUCKET_LANDING),
         aws_conn_id=Conn.MINIO)
 
-    _s3_import >> s3_list_remaining
+    _s3_import >> import_sync >> s3_list_remaining
 
     def choose_next_path(**kwargs):
         return 'import_incomplete' if kwargs['ti'].xcom_pull(task_ids='s3_list_remaining') else 'import_success'

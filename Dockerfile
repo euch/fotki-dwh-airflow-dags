@@ -13,8 +13,7 @@ RUN pip install --disable-pip-version-check -r requirements.txt
 
 COPY dags/dwh                  /opt/airflow/dags/
 COPY dags/storage              /opt/airflow/dags/
-COPY dags/common.py            /opt/airflow/dags/
 COPY dags/config.py            /opt/airflow/dags/
 COPY dags/dag_ping_services.py /opt/airflow/dags/
 #
-COPY operators/ /opt/airflow/plugins/
+COPY plugins/ /opt/airflow/plugins/

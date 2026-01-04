@@ -3,7 +3,7 @@ from io import BytesIO
 
 from airflow.providers.postgres.hooks.postgres import PostgresHook
 
-from s3_import.utils.get_s3_object_bytes import get_s3_object_bytes
+from utils.s3_import.get_s3_object_bytes import get_s3_object_bytes
 
 
 def run_duplicate_check(s3, landing_bucket_key: str, landing_bucket: str,

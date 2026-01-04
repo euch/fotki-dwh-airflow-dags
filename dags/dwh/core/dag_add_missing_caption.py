@@ -11,7 +11,7 @@ from airflow.timetables.trigger import CronTriggerTimetable
 from pendulum import Timezone
 
 from config import *
-from check_helper_available import CheckHelperAvailableOperator
+from operators.check_helper_available import CheckHelperAvailableOperator
 
 schedule = AssetOrTimeSchedule(
     timetable=CronTriggerTimetable('0 1 * * *', timezone=Timezone(server_tz_name)),

@@ -7,9 +7,9 @@ from airflow.timetables.assets import AssetOrTimeSchedule
 from airflow.timetables.trigger import DeltaTriggerTimetable
 
 from config import *
-from bulk_insert import BulkInsertOperator
-from create_remote_tree_csv import CreateRemoteTreeCsvOperator
-from smb_download import SmbDownloadOperator
+from operators.bulk_insert import BulkInsertOperator
+from operators.create_remote_tree_csv import CreateRemoteTreeCsvOperator
+from operators.smb_download import SmbDownloadOperator
 
 schedule = AssetOrTimeSchedule(
     timetable=DeltaTriggerTimetable(timedelta(hours=1)),

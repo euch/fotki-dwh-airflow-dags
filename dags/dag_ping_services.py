@@ -6,8 +6,8 @@ from airflow.timetables.trigger import DeltaTriggerTimetable
 from airflow.utils.trigger_rule import TriggerRule
 
 from config import *
-from check_bucket_available import CheckBucketHelperAvailableOperator
-from check_helper_available import CheckHelperAvailableOperator
+from operators.check_bucket_available import CheckBucketHelperAvailableOperator
+from operators.check_helper_available import CheckHelperAvailableOperator
 
 schedule = DeltaTriggerTimetable(timedelta(hours=1))
 tags = {

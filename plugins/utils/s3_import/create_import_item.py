@@ -3,10 +3,10 @@ from io import BytesIO
 
 from airflow.providers.postgres.hooks.postgres import PostgresHook
 
-from s3_import.dto.import_item import GoodImportItem, ImportItem, UnrecognizedImportItem, DuplicateImportItem
-from s3_import.utils.get_s3_object_bytes import get_s3_object_bytes
-from s3_import.utils.get_subfolder import get_subfolder
-from s3_import.utils.run_duplicate_check import run_duplicate_check
+from dto.s3_import.import_item import GoodImportItem, ImportItem, UnrecognizedImportItem, DuplicateImportItem
+from utils.s3_import.get_s3_object_bytes import get_s3_object_bytes
+from utils.s3_import.get_subfolder import get_subfolder
+from utils.s3_import.run_duplicate_check import run_duplicate_check
 
 Y_D_M_H_M = "%Y-%m-%d_%H%M"
 

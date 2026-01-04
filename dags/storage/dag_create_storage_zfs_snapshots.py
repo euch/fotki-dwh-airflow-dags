@@ -8,7 +8,7 @@ from airflow.timetables.trigger import CronTriggerTimetable
 from airflow.utils.types import DagRunType
 from pendulum import Timezone
 
-from common import exec_remote_cmd
+from utils.ssh_utils import exec_remote_cmd
 from config import (
     DagName, server_tz_name, AssetName, DagTag,
     dag_args_retry, VariableName, Conn, server_timezone

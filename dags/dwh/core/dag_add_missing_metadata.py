@@ -9,7 +9,7 @@ from airflow.providers.samba.hooks.samba import SambaHook
 from airflow.sdk import Asset, dag, task, Variable
 
 from config import *
-from check_helper_available import CheckHelperAvailableOperator
+from operators.check_helper_available import CheckHelperAvailableOperator
 
 schedule = [Asset(AssetName.CORE_TREE_UPDATED)]
 tags = {
