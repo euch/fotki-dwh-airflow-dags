@@ -56,13 +56,13 @@ def dag():
     @task
     def s3_list() -> list[str]:
         s3_hook = S3Hook(aws_conn_id=Conn.MINIO)
-        return s3_hook.list_keys(bucket_name=Variable.get(VariableName.BUCKET_LANDING))
+        return s3_hook.list_keys(bucket_name=Variable.get(VariableName.BUCKET_LANDING), max_items=64)
 
     _s3_list = s3_list()
 
     wait_success >> assert_exif_helper_available >> _s3_list
 
-    @task
+    @task(max_active_tis_per_dag=4)
     def s3_import(key):
         s3_hook = S3Hook(aws_conn_id=Conn.MINIO).get_client_type('s3')
         item: ImportItem = create_import_item(
@@ -83,12 +83,14 @@ def dag():
 
     import_sync = EmptyOperator(task_id="import_sync", trigger_rule=TriggerRule.ALL_DONE)
 
-    s3_list_remaining = S3ListOperator(
-        task_id='s3_list_remaining',
-        bucket=Variable.get(VariableName.BUCKET_LANDING),
-        aws_conn_id=Conn.MINIO)
+    @task
+    def s3_list_remaining() -> list[str]:
+        s3_hook = S3Hook(aws_conn_id=Conn.MINIO)
+        return s3_hook.list_keys(bucket_name=Variable.get(VariableName.BUCKET_LANDING), max_items=1)
 
-    _s3_import >> import_sync >> s3_list_remaining
+    _s3_list_remaining = s3_list_remaining()
+
+    _s3_import >> import_sync >> _s3_list_remaining
 
     def choose_next_path(**kwargs):
         return 'import_incomplete' if kwargs['ti'].xcom_pull(task_ids='s3_list_remaining') else 'import_success'
@@ -98,7 +100,7 @@ def dag():
     import_success = EmptyOperator(task_id='import_success', outlets=[Asset(AssetName.NEW_FILES_IMPORTED)])
     reschedule = TriggerDagRunOperator(task_id='reschedule', trigger_dag_id=DagName.IMPORT_LANDING_FILES_S3)
 
-    s3_list_remaining >> branch >> [import_incomplete, import_success]
+    _s3_list_remaining >> branch >> [import_incomplete, import_success]
     import_success >> finish
     import_incomplete >> reschedule >> finish
 
