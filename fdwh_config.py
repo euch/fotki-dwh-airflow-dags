@@ -68,6 +68,7 @@ class AssetName:
     CORE_CAPTION_UPDATED = 'fdwh_core_caption_updated'
 
 
+
 class ImportSettings:
     COMPANION_FILE_EXTENSIONS = ['.mov', '.MOV', '.mp4', '.MP4', ]
     TIMESTAMP_FMT, TIMESTAMP_LEN = '%Y-%m-%d-auto', 15
@@ -76,6 +77,7 @@ class ImportSettings:
 class VariableName:
     _var_prefix = 'FDWH_'
 
+    IMPORT_MAX_FILE_SIZE = _var_prefix + 'IMPORT_MAX_FILE_SIZE'
     BUCKET_LANDING = _var_prefix + 'BUCKET_LANDING'
     BUCKET_REJECTED_DUPLICATES = _var_prefix + 'BUCKET_REJECTED_DUPLICATES'
     BUCKET_REJECTED_UNSUPPORTED = _var_prefix + 'BUCKET_REJECTED_UNSUPPORTED'

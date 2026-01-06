@@ -57,13 +57,14 @@ def dag():
     @task()
     def import_landing_files() -> list[str]:
 
-        s3 = S3Hook(aws_conn_id=Conn.MINIO).get_client_type('s3')
+        s3: S3Hook = S3Hook(aws_conn_id=Conn.MINIO).get_client_type('s3')
         smb_hook_storage = SambaHook.get_hook(Conn.SMB_COLLECTION)
         pg_hook = PostgresHook.get_hook(Conn.POSTGRES)
 
+        import_max_file_size = Variable.get(VariableName.IMPORT_MAX_FILE_SIZE)
         landing_bucket = Variable.get(VariableName.BUCKET_LANDING)
         exif_ts_endpoint = Variable.get(VariableName.EXIF_TS_ENDPOINT)
-        unrecognized_bucket = Variable.get(VariableName.BUCKET_REJECTED_UNSUPPORTED)
+        unsupported_bucket = Variable.get(VariableName.BUCKET_REJECTED_UNSUPPORTED)
         duplicate_bucket = Variable.get(VariableName.BUCKET_REJECTED_DUPLICATES)
 
         imported_storage_paths: list[str] = []
@@ -71,10 +72,13 @@ def dag():
         for page in s3.get_paginator('list_objects_v2').paginate(Bucket=landing_bucket):
             if 'Contents' in page:
                 for obj in page['Contents']:
-                    import_item: ImportItem = create_import_item(s3=s3, pg_hook=pg_hook, landing_bucket_key=obj['Key'],
+                    import_item: ImportItem = create_import_item(s3=s3,
+                                                                 pg_hook=pg_hook,
+                                                                 landing_bucket_key=obj['Key'],
                                                                  landing_bucket=landing_bucket,
+                                                                 import_max_file_size=import_max_file_size,
                                                                  exif_ts_endpoint=exif_ts_endpoint,
-                                                                 unrecognized_bucket=unrecognized_bucket,
+                                                                 unsupported_bucket=unsupported_bucket,
                                                                  duplicate_bucket=duplicate_bucket)
 
                     move_s3_import_item(s3=s3, smb_hook_storage=smb_hook_storage, import_item=import_item)
