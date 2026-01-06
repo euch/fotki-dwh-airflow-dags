@@ -1,6 +1,6 @@
 import unittest
 
-from fdwh_import.utils.get_subfolder import validate_subfolder_fmt, get_subfolder_from_path
+from fdwh_import.utils.get_subfolder import validate_subfolder_fmt, get_subfolder_from_prefix
 
 
 class TestSubfolderMethods(unittest.TestCase):
@@ -23,15 +23,15 @@ class TestSubfolderMethods(unittest.TestCase):
         self.assertFalse(validate_subfolder_fmt("Invalid date format"))
 
     def test_get_subfolder_from_prefix_valid(self):
-        self.assertEqual(get_subfolder_from_path("2023-06-10 description/other/path"), "2023-06-10 description")
-        self.assertEqual(get_subfolder_from_path("2020-01-01 New Year/another/path"), "2020-01-01 New Year")
+        self.assertEqual(get_subfolder_from_prefix("2023-06-10 description/other/path"), "2023-06-10 description")
+        self.assertEqual(get_subfolder_from_prefix("2020-01-01 New Year/another/path"), "2020-01-01 New Year")
 
     def test_get_subfolder_from_prefix_invalid(self):
-        self.assertIsNone(get_subfolder_from_path("2023-06-10/other/path"))
-        self.assertIsNone(get_subfolder_from_path("Invalid format/other/path"))
-        self.assertIsNone(get_subfolder_from_path("2023-06-10/"))
+        self.assertIsNone(get_subfolder_from_prefix("2023-06-10/other/path"))
+        self.assertIsNone(get_subfolder_from_prefix("Invalid format/other/path"))
+        self.assertIsNone(get_subfolder_from_prefix("2023-06-10/"))
 
     def test_get_subfolder_from_prefix_invalid_future_date(self):
-        self.assertIsNone(get_subfolder_from_path("2099-06-32 description/other/path"))
-        self.assertIsNone(get_subfolder_from_path("2099-11-31 New Year/another/path"))
-        self.assertIsNone(get_subfolder_from_path("2025-13-01 New Year/another/path"))
+        self.assertIsNone(get_subfolder_from_prefix("2099-06-32 description/other/path"))
+        self.assertIsNone(get_subfolder_from_prefix("2099-11-31 New Year/another/path"))
+        self.assertIsNone(get_subfolder_from_prefix("2025-13-01 New Year/another/path"))
