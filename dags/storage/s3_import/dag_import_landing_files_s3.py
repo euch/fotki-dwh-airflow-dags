@@ -5,11 +5,10 @@ from airflow.providers.amazon.aws.sensors.s3 import S3KeySensor
 from airflow.providers.standard.operators.empty import EmptyOperator
 from airflow.providers.standard.operators.python import BranchPythonOperator
 from airflow.providers.standard.operators.trigger_dagrun import TriggerDagRunOperator
-from airflow.sdk import Asset, dag, Variable, task, TriggerRule, task_group
+from airflow.sdk import Asset, dag, Variable, task, TriggerRule
 from airflow.timetables.trigger import DeltaTriggerTimetable
 
 from config import *
-from dto.s3_import.import_item import ImportItem
 from hooks.s3_inspect_import_hook import S3InspectImportHook
 from hooks.s3_move_import_hook import S3MoveImportHook
 from operators.check_helper_available import CheckHelperAvailableOperator
@@ -53,34 +52,31 @@ def dag():
     @task
     def s3_list() -> list[str]:
         s3_hook = S3Hook(aws_conn_id=Conn.MINIO)
-        return s3_hook.list_keys(bucket_name=Variable.get(VariableName.BUCKET_LANDING), max_items=64)
+        return s3_hook.list_keys(bucket_name=Variable.get(VariableName.BUCKET_LANDING))
 
     _s3_list = s3_list()
 
     wait_success >> assert_exif_helper_available >> _s3_list
 
-    @task_group
+    @task(max_active_tis_per_dag=10)
     def s3_import(landing_bucket_key: str):
-        @task(max_active_tis_per_dag=4)
-        def inspect() -> ImportItem:
-            hook = S3InspectImportHook(
-                aws_conn_id=Conn.MINIO,
-                pg_conn_id=Conn.POSTGRES,
-                exif_ts_endpoint=Variable.get(VariableName.EXIF_TS_ENDPOINT),
-                landing_bucket=Variable.get(VariableName.BUCKET_LANDING))
-            return hook.create_import_item(landing_bucket_key)
+        inspect_hook = S3InspectImportHook(
+            aws_conn_id=Conn.MINIO,
+            pg_conn_id=Conn.POSTGRES,
+            exif_ts_endpoint=Variable.get(VariableName.EXIF_TS_ENDPOINT),
+            landing_bucket=Variable.get(VariableName.BUCKET_LANDING),
+            subfolder_fmt='%Y-%m-%d-auto')
+        import_item = inspect_hook.create_import_item(landing_bucket_key)
+        print(import_item)
+        move_hook = S3MoveImportHook(
+            aws_conn_id=Conn.MINIO,
+            smb_conn_id=Conn.SMB_COLLECTION,
+            landing_bucket=Variable.get(VariableName.BUCKET_LANDING),
+            unsupported_bucket=Variable.get(VariableName.BUCKET_REJECTED_UNSUPPORTED),
+            duplicate_bucket=Variable.get(VariableName.BUCKET_REJECTED_DUPLICATES))
+        move_hook.move_s3_import_item(import_item)
 
-        @task(max_active_tis_per_dag=4)
-        def move(import_item: ImportItem):
-            hook = S3MoveImportHook(
-                aws_conn_id=Conn.MINIO,
-                smb_conn_id=Conn.SMB_COLLECTION,
-                landing_bucket=Variable.get(VariableName.BUCKET_LANDING),
-                unsupported_bucket=Variable.get(VariableName.BUCKET_REJECTED_UNSUPPORTED),
-                duplicate_bucket=Variable.get(VariableName.BUCKET_REJECTED_DUPLICATES))
-            hook.move_s3_import_item(import_item)
-
-    _s3_import = s3_import.expand(key=_s3_list)
+    _s3_import = s3_import.expand(landing_bucket_key=_s3_list)
 
     import_sync = EmptyOperator(task_id="import_sync", trigger_rule=TriggerRule.ALL_DONE)
 

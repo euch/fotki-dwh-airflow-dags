@@ -1,11 +1,9 @@
 import shutil
 from contextlib import contextmanager
+from io import BytesIO
 
 from airflow.providers.amazon.aws.hooks.s3 import S3Hook
 from airflow.providers.samba.hooks.samba import SambaHook
-
-from dto.s3_import.import_item import GoodImportItem, DuplicateImportItem, UnsupportedImportItem, ImportItem, \
-    BadImportItem
 
 
 class S3MoveImportHook(S3Hook):
@@ -28,30 +26,37 @@ class S3MoveImportHook(S3Hook):
                 raise
             pass
 
-    def move_s3_import_item(self, import_item: ImportItem):
-        if isinstance(import_item, GoodImportItem):
-            self._move_good(import_item)
-        elif isinstance(import_item, BadImportItem):
-            self._move_bad(import_item)
+    def move_s3_import_item(self, import_item: dict[str, str]):
+        status = import_item['status']
+        landing_bucket_key = import_item['landing_bucket_key']
+        if 'good' == status:
+            dest_path = import_item['dest_path']
+            dest_subfolder = import_item['dest_subfolder']
+            self._move_good(dest_path=dest_path, dest_subfolder=dest_subfolder, landing_bucket_key=landing_bucket_key)
+        elif 'duplicate' == status:
+            dest_key = import_item['dest_key']
+            dest_bucket = self.duplicate_bucket
+            self._move_bad(dest_key=dest_key, dest_bucket=dest_bucket, landing_bucket_key=landing_bucket_key)
+        elif 'unsupported' == status:
+            dest_key = import_item['dest_key']
+            dest_bucket = self.unsupported_bucket
+            self._move_bad(dest_key=dest_key, dest_bucket=dest_bucket, landing_bucket_key=landing_bucket_key)
         else:
             raise NotImplementedError
 
-    def _move_good(self, import_item):
-        self.smb_hook_storage.makedirs(import_item.storage_dir, exist_ok=True)
-        with self.smb_hook_storage.open_file(import_item.storage_path, mode="wb") as g:
-            shutil.copyfileobj(import_item.safe_obj_bytes(), g)
-            self.s3.delete_object(Bucket=self.landing_bucket, Key=import_item.landing_bucket_key)
+    def _move_good(self, dest_path, dest_subfolder, landing_bucket_key):
+        self.smb_hook_storage.makedirs(dest_subfolder, exist_ok=True)
+        with self.smb_hook_storage.open_file(dest_path, mode="wb") as g:
+            obj_bytes = self._get_s3_object_bytes(landing_bucket_key)
+            shutil.copyfileobj(obj_bytes, g)
+            self.s3.delete_object(Bucket=self.landing_bucket, Key=landing_bucket_key)
 
-    def _move_bad(self, import_item):
-        dest_bucket = self._bad_item_dest_bucket(import_item)
-        copy_source = {'Bucket': self.landing_bucket, 'Key': import_item.landing_bucket_key}
-        self.s3.copy_object(Bucket=dest_bucket, Key=import_item.dest_key, CopySource=copy_source)
-        self.s3.delete_object(Bucket=self.landing_bucket, Key=import_item.landing_bucket_key)
+    def _move_bad(self, dest_key, dest_bucket, landing_bucket_key):
+        copy_source = {'Bucket': self.landing_bucket, 'Key': landing_bucket_key}
+        self.s3.copy_object(Bucket=dest_bucket, Key=dest_key, CopySource=copy_source)
+        self.s3.delete_object(Bucket=self.landing_bucket, Key=landing_bucket_key)
 
-    def _bad_item_dest_bucket(self, import_item) -> str:
-        if isinstance(import_item, DuplicateImportItem):
-            return self.duplicate_bucket
-        elif isinstance(import_item, UnsupportedImportItem):
-            return self.unsupported_bucket
-        else:
-            raise NotImplementedError
+    def _get_s3_object_bytes(self, landing_bucket_key: str) -> BytesIO:
+        resp_obj = self.s3.get_object(Bucket=self.landing_bucket, Key=landing_bucket_key)
+        data = resp_obj['Body'].read()
+        return BytesIO(data)

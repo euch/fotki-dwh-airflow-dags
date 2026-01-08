@@ -65,11 +65,6 @@ class AssetName:
     CORE_CAPTION_UPDATED = 'core_caption_updated'
 
 
-class ImportSettings:
-    COMPANION_FILE_EXTENSIONS = ['.mov', '.MOV', '.mp4', '.MP4', ]
-    TIMESTAMP_FMT, TIMESTAMP_LEN = '%Y-%m-%d-auto', 15
-
-
 class VariableName:
     BUCKET_LANDING = 'BUCKET_LANDING'
     BUCKET_REJECTED_DUPLICATES = 'BUCKET_REJECTED_DUPLICATES'
