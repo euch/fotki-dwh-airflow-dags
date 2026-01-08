@@ -14,7 +14,7 @@ from config import *
 from operators.check_helper_available import CheckHelperAvailableOperator
 
 schedule = AssetOrTimeSchedule(
-    timetable=CronTriggerTimetable('0 1 * * *', timezone=Timezone(server_tz_name)),
+    timetable=CronTriggerTimetable('*/30 * * * *', timezone=Timezone(server_tz_name)),
     assets=Asset(AssetName.CORE_METADATA_UPDATED)
 )
 max_duration = timedelta(hours=6)
