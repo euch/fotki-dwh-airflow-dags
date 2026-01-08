@@ -1,7 +1,6 @@
 from datetime import timedelta
 
 from airflow.providers.amazon.aws.hooks.s3 import S3Hook
-from airflow.providers.amazon.aws.operators.s3 import S3ListOperator
 from airflow.providers.amazon.aws.sensors.s3 import S3KeySensor
 from airflow.providers.postgres.hooks.postgres import PostgresHook
 from airflow.providers.samba.hooks.samba import SambaHook
@@ -10,12 +9,12 @@ from airflow.providers.standard.operators.python import BranchPythonOperator
 from airflow.providers.standard.operators.trigger_dagrun import TriggerDagRunOperator
 from airflow.sdk import Asset, dag, Variable, task, TriggerRule
 from airflow.timetables.trigger import DeltaTriggerTimetable
+
+from config import *
 from dto.s3_import.import_item import ImportItem
+from operators.check_helper_available import CheckHelperAvailableOperator
 from utils.s3_import.create_import_item import create_import_item
 from utils.s3_import.move_s3_import_item import move_s3_import_item
-
-from operators.check_helper_available import CheckHelperAvailableOperator
-from config import *
 
 schedule = DeltaTriggerTimetable(timedelta(minutes=1))
 tags = {
