@@ -13,7 +13,7 @@ from operators.smb_download import SmbDownloadOperator
 
 schedule = AssetOrTimeSchedule(
     timetable=DeltaTriggerTimetable(timedelta(hours=1)),
-    assets=(Asset(AssetName.NEW_FILES_IMPORTED)))
+    assets=(Asset(AssetName.IMPORT_COMPLETE)))
 tags = {
     DagTag.DWH_RAW,
     DagTag.STORAGE_IO,

@@ -11,6 +11,7 @@ dag_args_retry = {
 server_tz_name = 'Europe/Samara'
 server_timezone = timezone(server_tz_name)
 
+
 class Conn:
     POSTGRES = 'postgres'
     MINIO = 'minio'
@@ -57,20 +58,14 @@ class DagTag:
 
 
 class AssetName:
-    NEW_FILES_IMPORTED = 'new_files_imported'
+    IMPORT_COMPLETE = 'import_complete'
     RAW_TREES_UPDATED = 'raw_trees_updated'
     CORE_TREE_UPDATED = 'core_tree_updated'
     CORE_METADATA_UPDATED = 'core_metadata_updated'
     CORE_CAPTION_UPDATED = 'core_caption_updated'
 
 
-class ImportSettings:
-    COMPANION_FILE_EXTENSIONS = ['.mov', '.MOV', '.mp4', '.MP4', ]
-    TIMESTAMP_FMT, TIMESTAMP_LEN = '%Y-%m-%d-auto', 15
-
-
 class VariableName:
-
     BUCKET_LANDING = 'BUCKET_LANDING'
     BUCKET_REJECTED_DUPLICATES = 'BUCKET_REJECTED_DUPLICATES'
     BUCKET_REJECTED_UNSUPPORTED = 'BUCKET_REJECTED_UNSUPPORTED'

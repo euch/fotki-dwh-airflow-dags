@@ -11,9 +11,5 @@ USER airflow
 COPY requirements.txt .
 RUN pip install --disable-pip-version-check -r requirements.txt
 
-COPY dags/dwh                  /opt/airflow/dags/
-COPY dags/storage              /opt/airflow/dags/
-COPY dags/config.py            /opt/airflow/dags/
-COPY dags/dag_ping_services.py /opt/airflow/dags/
-#
 COPY plugins/ /opt/airflow/plugins/
+COPY dags/ /opt/airflow/dags/
