@@ -7,16 +7,14 @@ from airflow.exceptions import AirflowException
 from airflow.providers.postgres.hooks.postgres import PostgresHook
 from airflow.sdk import Asset, Variable, dag, task
 from airflow.timetables.assets import AssetOrTimeSchedule
-from airflow.timetables.trigger import CronTriggerTimetable
-from pendulum import Timezone
+from airflow.timetables.trigger import DeltaTriggerTimetable
 
 from config import *
 from operators.check_helper_available import CheckHelperAvailableOperator
 
 schedule = AssetOrTimeSchedule(
-    timetable=CronTriggerTimetable('*/30 * * * *', timezone=Timezone(server_tz_name)),
-    assets=Asset(AssetName.CORE_METADATA_UPDATED)
-)
+    timetable=DeltaTriggerTimetable(timedelta(minutes=30)),
+    assets=Asset(AssetName.CORE_METADATA_UPDATED))
 max_duration = timedelta(hours=6)
 tags = {
     DagTag.DWH_CORE,

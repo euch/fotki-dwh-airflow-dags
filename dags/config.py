@@ -1,5 +1,3 @@
-from pytz import timezone
-
 dag_args_noretry = {
     'retries': 0,
 }
@@ -7,9 +5,6 @@ dag_args_noretry = {
 dag_args_retry = {
     'retries': 10,
 }
-
-server_tz_name = 'Europe/Samara'
-server_timezone = timezone(server_tz_name)
 
 
 class Conn:
@@ -65,6 +60,10 @@ class AssetName:
     CORE_CAPTION_UPDATED = 'core_caption_updated'
 
 
+class ImportSettings:
+    TIMESTAMP_FMT = '%Y-%m-%d-auto'
+
+
 class VariableName:
     BUCKET_LANDING = 'BUCKET_LANDING'
     BUCKET_REJECTED_DUPLICATES = 'BUCKET_REJECTED_DUPLICATES'
@@ -75,11 +74,6 @@ class VariableName:
     STORAGE_PATH_COLLECTION = 'RP_COLLECTION'
     STORAGE_PATH_TRASH = 'RP_TRASH'
     STORAGE_PATH_WORKCOPY = 'RP_WORKCOPY'
-
-    STORAGE_ZFS_DATASET_ARCHIVE = 'STORAGE_ZFS_DATASET_ARCHIVE'
-    STORAGE_ZFS_DATASET_COLLECTION = 'STORAGE_ZFS_DATASET_COLLECTION'
-    STORAGE_ZFS_DATASET_TRASH = 'STORAGE_ZFS_DATASET_TRASH'
-    STORAGE_ZFS_DATASET_WORKCOPY = 'STORAGE_ZFS_DATASET_WORKCOPY'
 
     OLLAMA_ENDPOINT = 'OLLAMA_ENDPOINT'
     METADATA_ENDPOINT = 'METADATA_ENDPOINT'
