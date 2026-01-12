@@ -3,7 +3,7 @@ from airflow.sdk import Asset, DAG, Variable, TaskGroup
 
 from config import *
 
-schedule = (Asset(AssetName.NEW_FILES_IMPORTED))
+schedule = (Asset(AssetName.IMPORT_COMPLETE))
 tags = {
     DagTag.SSH,
     DagTag.STORAGE_IO,

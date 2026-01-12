@@ -2,9 +2,9 @@ import re
 
 from airflow.models import Variable
 from airflow.providers.postgres.hooks.postgres import PostgresHook
+from airflow.providers.ssh.hooks.ssh import SSHHook
 from airflow.sdk import Asset, dag, task
 
-from utils.ssh_utils import exec_remote_cmd
 from config import *
 
 
@@ -34,6 +34,27 @@ def _find_rightmost_date(path: str):
     # Return the match with the smallest distance from the end (rightmost)
     rightmost_match = min(matches, key=lambda x: x['distance_from_end'])
     return rightmost_match['date']
+
+def _exec_remote_cmd(cmd: str, ssh_conn_id: str) -> (str, str):
+    try:
+        ssh_hook = SSHHook(ssh_conn_id)
+        ssh_client = ssh_hook.get_conn()
+        stdin, stdout, stderr = ssh_client.exec_command(cmd)
+        # Read the output
+        remote_output = stdout.read().decode('utf-8')
+        remote_error = stderr.read().decode('utf-8')
+        print(f"Command executed: {cmd}")
+        print(f"Remote Output:\n{remote_output}")
+        if remote_error:
+            print(f"Remote Error:\n{remote_error}")
+        return remote_output, remote_error
+    except Exception as e:
+        print(f"An error occurred: {e}")
+    finally:
+        # 3. Close the Connection
+        if 'ssh_client' in locals() and ssh_client:
+            ssh_client.close()
+            print("SSH connection closed.")
 
 
 schedule = (Asset(AssetName.CORE_CAPTION_UPDATED) | Asset(AssetName.CORE_TREE_UPDATED))
@@ -66,13 +87,13 @@ def refresh_flat_symlinks_birds():
                 cmds.append(f'ln -s "{abs_filename}" /"{root_dir}"/плоские_птицы/"{timestamp}"_"{short_filename}"')
             else:
                 print(f"timestamp not found in {abs_filename}")
-        exec_remote_cmd('; '.join(cmds), ssh_conn_id=Conn.SSH_STORAGE)
+        _exec_remote_cmd('; '.join(cmds), ssh_conn_id=Conn.SSH_STORAGE)
 
     @task
     def rm_dead_symlinks() -> None:
         root_dir = Variable.get(VariableName.STORAGE_PATH_WORKCOPY)
         cmd = f'cd /"{root_dir}"/плоские_птицы/ ' + '&&' + ' find . -type l ! -exec test -e {} \; -print -delete'
-        exec_remote_cmd(cmd, ssh_conn_id=Conn.SSH_STORAGE)
+        _exec_remote_cmd(cmd, ssh_conn_id=Conn.SSH_STORAGE)
 
     _bird_dirs = find_bird_dirs()
     _commands = create_symlink.expand(dir=_bird_dirs)
@@ -103,13 +124,13 @@ def refresh_flat_symlinks_video():
                 cmds.append(f'ln -s "{abs_filename}" /"{root_dir}"/плоские_видео/"{timestamp}"_"{short_filename}"')
             else:
                 print(f"timestamp not found in {abs_filename}")
-        exec_remote_cmd('; '.join(cmds), ssh_conn_id=Conn.SSH_STORAGE)
+        _exec_remote_cmd('; '.join(cmds), ssh_conn_id=Conn.SSH_STORAGE)
 
     @task
     def rm_dead_symlinks() -> None:
         root_dir = Variable.get(VariableName.STORAGE_PATH_WORKCOPY)
         cmd = f'cd /"{root_dir}"/плоские_видео/ ' + '&&' + ' find . -type l ! -exec test -e {} \; -print -delete'
-        exec_remote_cmd(cmd, ssh_conn_id=Conn.SSH_STORAGE)
+        _exec_remote_cmd(cmd, ssh_conn_id=Conn.SSH_STORAGE)
 
     _video_dirs = find_video_dirs()
     _commands = create_symlink.expand(dir=_video_dirs)
