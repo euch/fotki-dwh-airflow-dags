@@ -43,13 +43,13 @@ def add_missing_metadata():
     none_metadata_added = EmptyOperator(task_id='none_metadata_added', outlets=[])
 
     @task.branch
-    def choose_branch(result_collection, result_trash, result_archive):
+    def check_results(result_collection, result_trash, result_archive):
         if result_collection['some_added'] or result_trash['some_added'] or result_archive['some_added']:
             return "some_metadata_added"
         else:
             return "none_metadata_added"
 
-    _choose_branch = choose_branch(result_collection=_add_missing_metadata_collection,
+    _choose_branch = check_results(result_collection=_add_missing_metadata_collection,
                                    result_trash=_add_missing_metadata_trash,
                                    result_archive=_add_missing_metadata_archive)
 
