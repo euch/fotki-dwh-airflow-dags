@@ -10,7 +10,6 @@ from airflow.timetables.assets import AssetOrTimeSchedule
 from airflow.timetables.trigger import DeltaTriggerTimetable
 
 from config import *
-from operators.check_helper_available import CheckHelperAvailableOperator
 
 schedule = AssetOrTimeSchedule(
     timetable=DeltaTriggerTimetable(timedelta(minutes=30)),
@@ -73,10 +72,6 @@ where
 @dag(dag_id=DagName.ADD_MISSING_CAPTION, max_active_runs=1, default_args=dag_args_noretry,
      schedule=schedule, tags=tags)
 def dag():
-    assert_ollama_available = CheckHelperAvailableOperator(
-        task_id='assert_ollama_available',
-        url=Variable.get(VariableName.OLLAMA_ENDPOINT))
-
     @task
     def get_settings():
         pg_hook = PostgresHook.get_hook(Conn.POSTGRES)
@@ -102,7 +97,7 @@ def dag():
     settings = get_settings()
     process_collection = add_missing_caption_collection(settings)
     process_archive = add_missing_caption_archive(settings)
-    assert_ollama_available >> process_collection >> process_archive >> end()
+    process_collection >> process_archive >> end()
 
 
 dag()

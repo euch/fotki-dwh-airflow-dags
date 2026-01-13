@@ -11,7 +11,6 @@ from airflow.timetables.trigger import DeltaTriggerTimetable
 from config import *
 from hooks.s3_inspect_import_hook import S3InspectImportHook
 from hooks.s3_move_import_hook import S3MoveImportHook
-from operators.check_helper_available import CheckHelperAvailableOperator
 
 schedule = DeltaTriggerTimetable(timedelta(minutes=1))
 tags = {
@@ -45,10 +44,6 @@ def dag():
     wait_for_any_s3_file >> [wait_timeout, wait_success]
     wait_timeout >> finish
 
-    assert_exif_helper_available = CheckHelperAvailableOperator(
-        task_id="assert_exif_helper_available",
-        url=Variable.get(VariableName.EXIF_TS_ENDPOINT))
-
     @task
     def s3_list() -> list[str]:
         s3_hook = S3Hook(aws_conn_id=Conn.MINIO)
@@ -56,7 +51,7 @@ def dag():
 
     _s3_list = s3_list()
 
-    wait_success >> assert_exif_helper_available >> _s3_list
+    wait_success >> _s3_list
 
     @task(max_active_tis_per_dag=10)
     def s3_import(landing_bucket_key: str):

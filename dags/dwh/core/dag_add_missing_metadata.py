@@ -6,10 +6,10 @@ import requests
 from airflow.exceptions import AirflowException
 from airflow.providers.postgres.hooks.postgres import PostgresHook
 from airflow.providers.samba.hooks.samba import SambaHook
+from airflow.providers.standard.operators.empty import EmptyOperator
 from airflow.sdk import Asset, dag, task, Variable
 
 from config import *
-from operators.check_helper_available import CheckHelperAvailableOperator
 
 schedule = [Asset(AssetName.CORE_TREE_UPDATED)]
 tags = {
@@ -23,10 +23,6 @@ tags = {
 
 @dag(dag_id=DagName.ADD_MISSING_METADATA, max_active_runs=1, default_args=dag_args_retry, schedule=schedule, tags=tags)
 def add_missing_metadata():
-    assert_metadata_helper_available = CheckHelperAvailableOperator(
-        task_id="assert_metadata_helper_available",
-        url=Variable.get(VariableName.METADATA_ENDPOINT))
-
     @task
     def add_missing_metadata_collection():
         return _add_missing_metadata(Conn.SMB_COLLECTION, VariableName.STORAGE_PATH_COLLECTION, 'collection')
@@ -39,20 +35,30 @@ def add_missing_metadata():
     def add_missing_metadata_archive():
         return _add_missing_metadata(Conn.SMB_ARCHIVE, VariableName.STORAGE_PATH_ARCHIVE, 'archive')
 
-    @task(outlets=[Asset[AssetName.CORE_METADATA_UPDATED]])
-    def end():
-        pass
+    _add_missing_metadata_collection = add_missing_metadata_collection()
+    _add_missing_metadata_trash = add_missing_metadata_trash()
+    _add_missing_metadata_archive = add_missing_metadata_archive()
 
-    (assert_metadata_helper_available >> [
-        add_missing_metadata_collection(),
-        add_missing_metadata_trash(),
-        add_missing_metadata_archive()
-    ] >> end())
+    some_metadata_added = EmptyOperator(task_id='some_metadata_added', outlets=[Asset(AssetName.CORE_METADATA_UPDATED)])
+    none_metadata_added = EmptyOperator(task_id='none_metadata_added', outlets=[])
+
+    @task.branch
+    def choose_branch(result_collection, result_trash, result_archive):
+        if result_collection['some_added'] or result_trash['some_added'] or result_archive['some_added']:
+            return "some_metadata_added"
+        else:
+            return "none_metadata_added"
+
+    _choose_branch = choose_branch(result_collection=_add_missing_metadata_collection,
+                                   result_trash=_add_missing_metadata_trash,
+                                   result_archive=_add_missing_metadata_archive)
+
+    _choose_branch >> [some_metadata_added, none_metadata_added]
 
 
 add_missing_metadata()
 
-missing_metadata_select_sql = '''
+_missing_metadata_select_sql = '''
 select
 	t.abs_filename,
     CASE 
@@ -111,15 +117,18 @@ def _add_missing_metadata(smb_conn_name: str, remote_root_path_varname: str, tre
     smb_hook = SambaHook.get_hook(smb_conn_name)
     remote_root_path = Variable.get(remote_root_path_varname)
     endpoint = Variable.get(VariableName.METADATA_ENDPOINT)
+    some_added = False
     corrupt_abs_filenames = {''}
 
     def result_dict() -> dict:
         return {
+            'some_added': some_added,
             'corrupted_files': ','.join(corrupt_abs_filenames)
         }
 
     while True:
-        records = pg_hook.get_records(missing_metadata_select_sql, parameters=[tree_type, tuple(corrupt_abs_filenames)])
+        records = pg_hook.get_records(_missing_metadata_select_sql,
+                                      parameters=[tree_type, tuple(corrupt_abs_filenames)])
 
         if not records:
             return result_dict()
@@ -143,7 +152,7 @@ def _add_missing_metadata(smb_conn_name: str, remote_root_path_varname: str, tre
 
                     pg_hook.run(_insert_metadata_sql, parameters=[abs_filename, resp['hash'], exif, preview])
                     pg_hook.run(_update_log_sql, parameters=(resp['hash'], abs_filename))
-
+                    some_added = True
                 else:
                     raise AirflowException(
                         f'Helper returned {response.status_code} for {abs_filename}: {response.text}')
