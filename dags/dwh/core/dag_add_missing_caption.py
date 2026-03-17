@@ -6,15 +6,11 @@ import requests
 from airflow.exceptions import AirflowException
 from airflow.providers.postgres.hooks.postgres import PostgresHook
 from airflow.sdk import Asset, Variable, dag, task
-from airflow.timetables.assets import AssetOrTimeSchedule
 from airflow.timetables.trigger import DeltaTriggerTimetable
 
 from config import *
 
-schedule = AssetOrTimeSchedule(
-    timetable=DeltaTriggerTimetable(timedelta(minutes=30)),
-    assets=Asset(AssetName.CORE_METADATA_UPDATED))
-max_duration = timedelta(hours=6)
+schedule = DeltaTriggerTimetable(timedelta(minutes=1))
 tags = {
     DagTag.DWH_CORE,
     DagTag.HELPERS,
@@ -73,7 +69,7 @@ where
      schedule=schedule, tags=tags)
 def dag():
     @task
-    def get_settings():
+    def get_caption_conf():
         pg_hook = PostgresHook.get_hook(Conn.POSTGRES)
         row = pg_hook.get_records(_caption_conf_select_sql)[0]
         return {
@@ -84,55 +80,60 @@ def dag():
 
     @task()
     def add_missing_caption_collection(settings: dict):
-        return _add_missing_caption(settings, 'collection')
+        return _add_missing_caption(settings, 'collection', 1000)
 
     @task()
     def add_missing_caption_archive(settings: dict):
-        return _add_missing_caption(settings, 'archive')
+        return _add_missing_caption(settings, 'archive', 100)
 
     @task(outlets=[Asset(AssetName.CORE_CAPTION_UPDATED)])
     def end():
         pass
 
-    settings = get_settings()
-    process_collection = add_missing_caption_collection(settings)
-    process_archive = add_missing_caption_archive(settings)
+    caption_conf = get_caption_conf()
+    process_collection = add_missing_caption_collection(caption_conf)
+    process_archive = add_missing_caption_archive(caption_conf)
     process_collection >> process_archive >> end()
 
 
 dag()
 
 
-def _add_missing_caption(settings: dict, tree_type: str):
-    pg_hook = PostgresHook.get_hook(Conn.POSTGRES)
-    endpoint = Variable.get(VariableName.OLLAMA_ENDPOINT)
+def _add_missing_caption(caption_conf: dict, tree_type: str, limit: int) -> list[str]:
+    processed_abs_filenames = []
+    pg_hook: PostgresHook = PostgresHook.get_hook(Conn.POSTGRES)
 
     while True:
         records = pg_hook.get_records(_missing_caption_select_sql, parameters=[tree_type])
 
         if len(records) == 0:
-            return
+            return processed_abs_filenames
 
         for _hash, preview, abs_filename, has_more_records in records:
-            print(_hash)
             image_base64 = base64.b64encode(io.BytesIO(preview).read()).decode('utf-8')
-            payload = {
-                "model": settings['model'],
-                "prompt": settings['prompt'],
-                "stream": False,
-                "images": [image_base64]
-            }
-            headers = {"Content-Type": "application/json"}
-            print(f"posting image data of {abs_filename} ({_hash}) to {endpoint}")
-            response = requests.post(endpoint, json=payload, headers=headers)
-            if response.status_code == 200:
-                result = response.json()
-                captions = result.get('response')
-                pg_hook.run(_caption_insert_sql, parameters=[_hash, settings['caption_conf_id'], captions])
-                pg_hook.run(_log_update_sql, parameters=[abs_filename])
-            else:
-                print(response.content)
-                raise AirflowException(f'Helper returned {response.status_code} for {abs_filename}')
+            captions = _get_captions(caption_conf, image_base64)
+            pg_hook.run(_caption_insert_sql, parameters=[_hash, caption_conf['caption_conf_id'], captions])
+            pg_hook.run(_log_update_sql, parameters=[abs_filename])
+            processed_abs_filenames.append(abs_filename)
 
-            if not has_more_records:
-                return
+            if not has_more_records or len(processed_abs_filenames) >= limit:
+                return processed_abs_filenames
+
+
+def _get_captions(caption_conf, image_base64):
+    endpoint = Variable.get(VariableName.OLLAMA_ENDPOINT)
+    payload = {
+        "model": caption_conf['model'],
+        "prompt": caption_conf['prompt'],
+        "stream": False,
+        "images": [image_base64]
+    }
+    headers = {"Content-Type": "application/json"}
+    response = requests.post(endpoint, json=payload, headers=headers)
+    if response.status_code == 200:
+        result = response.json()
+        captions = result.get('response')
+        return captions
+    else:
+        print(response.content)
+        raise AirflowException(f'Helper returned {response.status_code}')
