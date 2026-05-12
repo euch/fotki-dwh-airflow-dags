@@ -47,7 +47,7 @@ def dag():
     @task
     def s3_list() -> list[str]:
         s3_hook = S3Hook(aws_conn_id=Conn.MINIO)
-        return s3_hook.list_keys(bucket_name=Variable.get(VariableName.BUCKET_LANDING))
+        return s3_hook.list_keys(bucket_name=Variable.get(VariableName.BUCKET_LANDING), max_items=100)
 
     _s3_list = s3_list()
 
