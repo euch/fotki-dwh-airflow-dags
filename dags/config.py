@@ -26,12 +26,8 @@ class DagName:
     PING_SERVICES = 'ping_services'
     REFRESH_CORE_TREE = 'refresh_core_tree'
     REFRESH_DATAMARTS = 'refresh_datamarts'
-    REFRESH_FLAT_SYMLINKS_BIRDS = 'refresh_flat_symlinks_birds'
-    REFRESH_FLAT_SYMLINKS_VIDEO = 'refresh_flat_symlinks_video'
     REFRESH_RAW_TREES = 'refresh_raw_trees'
-    REFRESH_WORKCOPY_SYMLINKS = 'refresh_workcopy_symlinks'
     RM_COLLECTION_DUPLICATES = 'rm_collection_duplicates'
-    CREATE_STORAGE_ZFS_SNAPSHOTS = 'create_storage_zfs_snapshots'
 
 
 class DagTag:
@@ -41,7 +37,6 @@ class DagTag:
     S3 = 's3'
     SMB = 'smb'
     SSH = 'ssh'
-    BACKUP = 'backup'
 
     DWH_RAW = 'dwh_raw'
     DWH_CORE = 'dwh_core'
