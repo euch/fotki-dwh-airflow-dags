@@ -2,10 +2,11 @@ from airflow.providers.common.sql.operators.sql import SQLExecuteQueryOperator
 from airflow.providers.common.sql.sensors.sql import SqlSensor
 from airflow.providers.standard.operators.empty import EmptyOperator
 from airflow.sdk import Asset, DAG, Variable
+from airflow.timetables.trigger import CronTriggerTimetable
 
 from config import *
 
-schedule = [Asset(AssetName.RAW_TREES_UPDATED)]
+schedule = CronTriggerTimetable('10,40 * * * *', timezone='UTC')
 tags = {
     DagTag.DWH_CORE,
     DagTag.PG,

@@ -15,8 +15,6 @@ class Conn:
     SMB_COLLECTION = "storage_smb_collection"
     SMB_TRASH = "storage_smb_trash"
 
-    SSH_STORAGE = 'storage_ssh'
-
 
 class DagName:
     ADD_MISSING_CAPTION = 'add_missing_caption'
@@ -26,7 +24,6 @@ class DagName:
     PING_SERVICES = 'ping_services'
     REFRESH_CORE_TREE = 'refresh_core_tree'
     REFRESH_DATAMARTS = 'refresh_datamarts'
-    REFRESH_RAW_TREES = 'refresh_raw_trees'
     RM_COLLECTION_DUPLICATES = 'rm_collection_duplicates'
 
 
@@ -49,7 +46,6 @@ class DagTag:
 
 class AssetName:
     IMPORT_COMPLETE = 'import_complete'
-    RAW_TREES_UPDATED = 'raw_trees_updated'
     CORE_TREE_UPDATED = 'core_tree_updated'
     CORE_METADATA_UPDATED = 'core_metadata_updated'
     CORE_CAPTION_UPDATED = 'core_caption_updated'
