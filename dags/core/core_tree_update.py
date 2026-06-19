@@ -11,8 +11,7 @@ tags = {
     DagTag.DWH_CORE,
     DagTag.PG,
 }
-with (DAG(dag_id=DagName.REFRESH_CORE_TREE, max_active_runs=1, schedule=schedule, default_args=dag_args_noretry,
-          tags=tags)):
+with (DAG(dag_id="core_tree_update", max_active_runs=1, schedule=schedule, default_args=dag_args_noretry, tags=tags)):
     SqlSensor(
         task_id='check_raw_differs',
         conn_id=Conn.POSTGRES,

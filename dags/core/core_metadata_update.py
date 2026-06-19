@@ -21,8 +21,8 @@ tags = {
 }
 
 
-@dag(dag_id=DagName.ADD_MISSING_METADATA, max_active_runs=1, default_args=dag_args_retry, schedule=schedule, tags=tags)
-def add_missing_metadata():
+@dag(max_active_runs=1, default_args=dag_args_retry, schedule=schedule, tags=tags)
+def core_metadata_update():
     @task
     def add_missing_metadata_collection():
         return _add_missing_metadata(Conn.SMB_COLLECTION, VariableName.STORAGE_PATH_COLLECTION, 'collection')
@@ -56,7 +56,7 @@ def add_missing_metadata():
     _choose_branch >> [some_metadata_added, none_metadata_added]
 
 
-add_missing_metadata()
+core_metadata_update()
 
 _missing_metadata_select_sql = '''
 select

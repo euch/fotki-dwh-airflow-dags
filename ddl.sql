@@ -16,13 +16,7 @@ CREATE SEQUENCE core.caption_conf_id_seq
 
 -- DROP TABLE core.caption;
 
-CREATE TABLE core.caption (
-	hash varchar NOT NULL,
-	caption_conf_id int4 NOT NULL,
-	caption text NOT NULL,
-	create_ts timestamptz DEFAULT now() NOT NULL,
-	CONSTRAINT caption_pk PRIMARY KEY (hash, caption_conf_id)
-);
+CREATE TABLE core.caption ( hash varchar NOT NULL, caption_conf_id int4 NOT NULL, caption text NOT NULL, create_ts timestamptz DEFAULT now() NOT NULL);
 CREATE INDEX caption_caption_idx ON core.caption USING btree (caption);
 
 
@@ -32,12 +26,7 @@ CREATE INDEX caption_caption_idx ON core.caption USING btree (caption);
 
 -- DROP TABLE core.caption_conf;
 
-CREATE TABLE core.caption_conf (
-	id serial4 NOT NULL,
-	model varchar NOT NULL,
-	prompt varchar NOT NULL,
-	CONSTRAINT caption_conf_pk PRIMARY KEY (id)
-);
+CREATE TABLE core.caption_conf ( id serial4 NOT NULL, model varchar NOT NULL, prompt varchar NOT NULL, CONSTRAINT caption_conf_pk PRIMARY KEY (id));
 
 
 -- core.tree definition
@@ -46,13 +35,7 @@ CREATE TABLE core.caption_conf (
 
 -- DROP TABLE core.tree;
 
-CREATE TABLE core.tree (
-	abs_filename varchar NOT NULL,
-	"size" int8 NOT NULL,
-	last_modified_ts int8 NOT NULL,
-	"type" varchar NOT NULL,
-	CONSTRAINT tree_pk PRIMARY KEY (abs_filename)
-);
+CREATE TABLE core.tree ( abs_filename varchar NOT NULL, "size" int8 NOT NULL, last_modified_ts int8 NOT NULL, "type" varchar NOT NULL, CONSTRAINT tree_pk PRIMARY KEY (abs_filename));
 
 
 -- core.caption_conf_selection definition
@@ -61,12 +44,7 @@ CREATE TABLE core.tree (
 
 -- DROP TABLE core.caption_conf_selection;
 
-CREATE TABLE core.caption_conf_selection (
-	selection_ts timestamptz DEFAULT now() NOT NULL,
-	caption_conf_id int4 NOT NULL,
-	CONSTRAINT caption_conf_selected_unique UNIQUE (selection_ts),
-	CONSTRAINT caption_conf_selected_caption_conf_fk FOREIGN KEY (caption_conf_id) REFERENCES core.caption_conf(id)
-);
+CREATE TABLE core.caption_conf_selection ( selection_ts timestamptz DEFAULT now() NOT NULL, caption_conf_id int4 NOT NULL, CONSTRAINT caption_conf_selected_unique UNIQUE (selection_ts), CONSTRAINT caption_conf_selection_caption_conf_fk FOREIGN KEY (caption_conf_id) REFERENCES core.caption_conf(id), CONSTRAINT caption_conf_selection_caption_conf_fk_1 FOREIGN KEY (caption_conf_id) REFERENCES core.caption_conf(id));
 
 
 -- core.metadata definition
@@ -75,14 +53,7 @@ CREATE TABLE core.caption_conf_selection (
 
 -- DROP TABLE core.metadata;
 
-CREATE TABLE core.metadata (
-	abs_filename varchar NOT NULL,
-	hash varchar NOT NULL,
-	exif json NULL,
-	preview bytea NULL,
-	CONSTRAINT metadata_pk PRIMARY KEY (abs_filename),
-	CONSTRAINT metadata_fk FOREIGN KEY (abs_filename) REFERENCES core.tree(abs_filename) ON DELETE CASCADE ON UPDATE RESTRICT
-);
+CREATE TABLE core.metadata ( abs_filename varchar NOT NULL, hash varchar NOT NULL, exif json NULL, preview bytea NULL, CONSTRAINT metadata_pk PRIMARY KEY (abs_filename), CONSTRAINT metadata_fk FOREIGN KEY (abs_filename) REFERENCES core.tree(abs_filename) ON DELETE CASCADE ON UPDATE RESTRICT);
 CREATE INDEX metadata_hash_idx ON core.metadata USING btree (hash);
 
 
@@ -92,12 +63,7 @@ CREATE INDEX metadata_hash_idx ON core.metadata USING btree (hash);
 
 -- DROP TABLE core.tree_rel_path;
 
-CREATE TABLE core.tree_rel_path (
-	abs_filename varchar NOT NULL,
-	rel_filename varchar NOT NULL,
-	CONSTRAINT tree_rel_path_pk PRIMARY KEY (abs_filename),
-	CONSTRAINT tree_rel_path_fk FOREIGN KEY (abs_filename) REFERENCES core.tree(abs_filename) ON DELETE CASCADE ON UPDATE RESTRICT
-);
+CREATE TABLE core.tree_rel_path ( abs_filename varchar NOT NULL, rel_filename varchar NOT NULL, CONSTRAINT tree_rel_path_pk PRIMARY KEY (abs_filename), CONSTRAINT tree_rel_path_fk FOREIGN KEY (abs_filename) REFERENCES core.tree(abs_filename) ON DELETE CASCADE ON UPDATE RESTRICT);
 
 
 -- core.current_caption_conf source
@@ -130,20 +96,13 @@ AS SELECT DISTINCT ON (create_ts, hash) hash,
 -- DROP SCHEMA dm;
 
 CREATE SCHEMA dm AUTHORIZATION postgres;
--- dm.caption_counts definition
+-- dm.caption_count_by_type definition
 
 -- Drop table
 
--- DROP TABLE dm.caption_counts;
+-- DROP TABLE dm.caption_count_by_type;
 
-CREATE TABLE dm.caption_counts (
-	ts timetz DEFAULT now() NOT NULL,
-	"type" varchar NOT NULL,
-	total_count int8 NOT NULL,
-	has_preview_count int8 NOT NULL,
-	has_caption_count int8 NOT NULL,
-	caption_conf_id int4 NULL
-);
+CREATE TABLE dm.caption_count_by_type ( ts timestamptz DEFAULT now() NOT NULL, "type" varchar NOT NULL, caption_conf_id int4 NULL, model varchar NOT NULL, count int8 NOT NULL);
 
 
 -- dm.counts definition
@@ -152,18 +111,7 @@ CREATE TABLE dm.caption_counts (
 
 -- DROP TABLE dm.counts;
 
-CREATE TABLE dm.counts (
-	now timestamptz NULL,
-	known_files_archive int8 NULL,
-	known_files_collection int8 NULL,
-	known_files_trash int8 NULL,
-	known_files_total int8 NULL,
-	metadata_ratio float8 NULL,
-	metadata_total int8 NULL,
-	metadata_nopreview int8 NULL,
-	metadata_noexif int8 NULL,
-	metadata_full int8 NULL
-);
+CREATE TABLE dm.counts ( now timestamptz NULL, known_files_archive int8 NULL, known_files_collection int8 NULL, known_files_trash int8 NULL, known_files_total int8 NULL, metadata_ratio float8 NULL, metadata_total int8 NULL, metadata_nopreview int8 NULL, metadata_noexif int8 NULL, metadata_full int8 NULL);
 
 
 -- dm.files_and_types definition
@@ -172,11 +120,25 @@ CREATE TABLE dm.counts (
 
 -- DROP TABLE dm.files_and_types;
 
-CREATE TABLE dm.files_and_types (
-	ts timestamptz NULL,
-	file_type text NULL,
-	cnt int8 NULL
-);
+CREATE TABLE dm.files_and_types ( ts timestamptz NULL, file_type text NULL, cnt int8 NULL);
+
+
+-- dm.preview_count_by_type definition
+
+-- Drop table
+
+-- DROP TABLE dm.preview_count_by_type;
+
+CREATE TABLE dm.preview_count_by_type ( ts timestamptz DEFAULT now() NOT NULL, "type" varchar NOT NULL, count int8 NOT NULL);
+
+
+-- dm.total_count_by_type definition
+
+-- Drop table
+
+-- DROP TABLE dm.total_count_by_type;
+
+CREATE TABLE dm.total_count_by_type ( ts timestamptz DEFAULT now() NOT NULL, "type" varchar NOT NULL, count int8 NOT NULL);
 
 
 -- dm.all_body_counts source
@@ -345,14 +307,7 @@ CREATE SCHEMA duplicates AUTHORIZATION postgres;
 
 -- DROP TABLE duplicates.collection_duplicates;
 
-CREATE TABLE duplicates.collection_duplicates (
-	abs_filename varchar NOT NULL,
-	hash varchar NOT NULL,
-	preview bytea NULL,
-	cnt int8 NOT NULL,
-	"delete" bool DEFAULT false NOT NULL,
-	CONSTRAINT collection_duplicates_pk PRIMARY KEY (abs_filename)
-);
+CREATE TABLE duplicates.collection_duplicates ( abs_filename varchar NOT NULL, hash varchar NOT NULL, preview bytea NULL, cnt int8 NOT NULL, "delete" bool DEFAULT false NOT NULL, CONSTRAINT collection_duplicates_pk PRIMARY KEY (abs_filename));
 
 
 -- duplicates.collection_repeated_imports source
@@ -388,15 +343,7 @@ CREATE SCHEMA log AUTHORIZATION postgres;
 
 -- DROP TABLE log.core_deleted_log;
 
-CREATE TABLE log.core_deleted_log (
-	abs_filename varchar NOT NULL,
-	tree_del_ts timestamptz NOT NULL,
-	tree_add_ts timestamptz NOT NULL,
-	metadata_add_ts timestamptz NULL,
-	caption_add_ts timestamptz NULL,
-	hash varchar NULL,
-	CONSTRAINT edm_deleted_log_pk PRIMARY KEY (abs_filename, tree_del_ts)
-);
+CREATE TABLE log.core_deleted_log ( abs_filename varchar NOT NULL, tree_del_ts timestamptz NOT NULL, tree_add_ts timestamptz NOT NULL, metadata_add_ts timestamptz NULL, caption_add_ts timestamptz NULL, hash varchar NULL, CONSTRAINT edm_deleted_log_pk PRIMARY KEY (abs_filename, tree_del_ts));
 
 
 -- log.core_log definition
@@ -405,56 +352,11 @@ CREATE TABLE log.core_deleted_log (
 
 -- DROP TABLE log.core_log;
 
-CREATE TABLE log.core_log (
-	abs_filename varchar NOT NULL,
-	tree_add_ts timestamptz NOT NULL,
-	metadata_add_ts timestamptz NULL,
-	caption_add_ts timestamptz NULL,
-	hash varchar NULL,
-	CONSTRAINT edm_log_pk PRIMARY KEY (abs_filename)
-);
+CREATE TABLE log.core_log ( abs_filename varchar NOT NULL, tree_add_ts timestamptz NOT NULL, metadata_add_ts timestamptz NULL, caption_add_ts timestamptz NULL, hash varchar NULL, CONSTRAINT edm_log_pk PRIMARY KEY (abs_filename));
 
 -- DROP SCHEMA raw;
 
 CREATE SCHEMA raw AUTHORIZATION postgres;
--- raw.tree_archive definition
-
--- Drop table
-
--- DROP TABLE raw.tree_archive;
-
-CREATE TABLE raw.tree_archive (
-	abs_filename varchar NOT NULL,
-	last_modified_ts int8 NOT NULL,
-	"size" int8 NOT NULL
-);
-
-
--- raw.tree_collection definition
-
--- Drop table
-
--- DROP TABLE raw.tree_collection;
-
-CREATE TABLE raw.tree_collection (
-	abs_filename varchar NOT NULL,
-	last_modified_ts int8 NOT NULL,
-	"size" int8 NOT NULL
-);
-
-
--- raw.tree_trash definition
-
--- Drop table
-
--- DROP TABLE raw.tree_trash;
-
-CREATE TABLE raw.tree_trash (
-	abs_filename varchar NOT NULL,
-	last_modified_ts int8 NOT NULL,
-	"size" int8 NOT NULL
-);
-
 
 -- raw.ignored source
 

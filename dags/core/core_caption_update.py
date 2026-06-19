@@ -22,7 +22,7 @@ tags = {
     DagTag.PG,
     DagTag.SMB,
 }
-dag_name = DagName.ADD_MISSING_CAPTION
+dag_id = 'core_caption_update'
 
 _missing_caption_select_sql = '''
 select
@@ -80,9 +80,8 @@ class CaptionStatus(str, Enum):
         return str(self.value)
 
 
-@dag(dag_id=dag_name, max_active_runs=1, default_args=dag_args_noretry,
-     schedule=schedule, tags=tags)
-def dag():
+@dag(dag_id=dag_id, max_active_runs=1, default_args=dag_args_noretry, schedule=schedule, tags=tags)
+def core_caption_update():
     @task
     def get_caption_conf():
         pg_hook = PostgresHook.get_hook(Conn.POSTGRES)
@@ -113,7 +112,7 @@ def dag():
 
         return False
 
-    trigger_again = TriggerDagRunOperator(task_id='trigger_again', trigger_dag_id=dag_name)
+    trigger_again = TriggerDagRunOperator(task_id='trigger_again', trigger_dag_id=dag_id)
 
     @task.short_circuit()
     def some_records_processed(results: list[CaptionStatus]):
@@ -138,7 +137,7 @@ def dag():
     some_records_processed([process_collection]) >> create_asset
 
 
-dag()
+core_caption_update()
 
 
 def _add_missing_caption(caption_conf: dict, tree_type: str, limit: int) -> CaptionStatus:

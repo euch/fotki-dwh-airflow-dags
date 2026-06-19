@@ -1,15 +1,8 @@
 FROM apache/airflow:3.1.5-python3.12
 
-# Switch to root user to install system-level dependencies if necessary
-USER root
-
-# Install any required system packages (e.g., git, gcc)
-# Example: RUN apt-get update && apt-get install -yqq git build-essential && rm -rf /var/lib/apt/lists/*
-
 USER airflow
 
 COPY requirements.txt .
 RUN pip install --disable-pip-version-check -r requirements.txt
 
-COPY plugins/ /opt/airflow/plugins/
 COPY dags/ /opt/airflow/dags/

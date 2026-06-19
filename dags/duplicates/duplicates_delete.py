@@ -26,7 +26,7 @@ tags = {
     DagTag.SMB,
     DagTag.CLEANUP,
 }
-with DAG(dag_id=DagName.RM_COLLECTION_DUPLICATES, max_active_runs=1, default_args=dag_args_noretry, tags=tags):
+with DAG(dag_id='duplicates_delete', max_active_runs=1, default_args=dag_args_noretry, tags=tags):
     _ = PythonOperator(
         task_id='delete_selected_collection_duplicates',
         python_callable=_delete_selected_collection_duplicates)

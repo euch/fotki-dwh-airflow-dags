@@ -16,24 +16,11 @@ class Conn:
     SMB_TRASH = "storage_smb_trash"
 
 
-class DagName:
-    ADD_MISSING_CAPTION = 'add_missing_caption'
-    ADD_MISSING_METADATA = 'add_missing_metadata'
-    FIND_COLLECTION_DUPLICATES = 'find_collection_duplicates'
-    IMPORT_LANDING_FILES_S3 = 'import_landing_files_s3'
-    PING_SERVICES = 'ping_services'
-    REFRESH_CORE_TREE = 'refresh_core_tree'
-    REFRESH_DATAMARTS = 'refresh_datamarts'
-    RM_COLLECTION_DUPLICATES = 'rm_collection_duplicates'
-
-
 class DagTag:
     CLEANUP = 'cleanup'
     MONITORING = 'monitoring'
     PG = 'pg'
-    S3 = 's3'
     SMB = 'smb'
-    SSH = 'ssh'
 
     DWH_RAW = 'dwh_raw'
     DWH_CORE = 'dwh_core'
@@ -45,7 +32,6 @@ class DagTag:
 
 
 class AssetName:
-    IMPORT_COMPLETE = 'import_complete'
     CORE_TREE_UPDATED = 'core_tree_updated'
     CORE_METADATA_UPDATED = 'core_metadata_updated'
     CORE_CAPTION_UPDATED = 'core_caption_updated'
@@ -56,11 +42,6 @@ class ImportSettings:
 
 
 class VariableName:
-    BUCKET_LANDING = 'BUCKET_LANDING'
-    BUCKET_REJECTED_DUPLICATES = 'BUCKET_REJECTED_DUPLICATES'
-    BUCKET_REJECTED_UNSUPPORTED = 'BUCKET_REJECTED_UNSUPPORTED'
-    BUCKETS = [BUCKET_LANDING, BUCKET_REJECTED_DUPLICATES, BUCKET_REJECTED_UNSUPPORTED]
-
     STORAGE_PATH_ARCHIVE = 'RP_ARCHIVE'
     STORAGE_PATH_COLLECTION = 'RP_COLLECTION'
     STORAGE_PATH_TRASH = 'RP_TRASH'
