@@ -1,17 +1,19 @@
 from airflow.providers.common.sql.operators.sql import SQLExecuteQueryOperator
 from airflow.providers.common.sql.sensors.sql import SqlSensor
 from airflow.providers.standard.operators.empty import EmptyOperator
-from airflow.sdk import Asset, DAG, Variable
-from airflow.timetables.trigger import CronTriggerTimetable
+from airflow.sdk import Asset, Variable, dag
 
 from config import *
+from core import DagId
 
-schedule = CronTriggerTimetable('10,40 * * * *', timezone='UTC')
 tags = {
     DagTag.DWH_CORE,
     DagTag.PG,
 }
-with (DAG(dag_id="core_tree_update", max_active_runs=1, schedule=schedule, default_args=dag_args_noretry, tags=tags)):
+
+
+@dag(dag_id=DagId.CORE_TREE_UPDATE, max_active_runs=1, default_args=dag_args_noretry, schedule=None, tags=tags)
+def dag():
     SqlSensor(
         task_id='check_raw_differs',
         conn_id=Conn.POSTGRES,
@@ -37,4 +39,7 @@ with (DAG(dag_id="core_tree_update", max_active_runs=1, schedule=schedule, defau
             'pattern_collection': '^' + Variable.get(VariableName.STORAGE_PATH_COLLECTION),
             'pattern_trash': '^' + Variable.get(VariableName.STORAGE_PATH_TRASH)
         }
-    ) >> EmptyOperator(task_id="finish", outlets=Asset(AssetName.CORE_TREE_UPDATED))
+    ) >> EmptyOperator(task_id="finish", outlets=Asset(AssetName.CORE_UPDATED))
+
+
+dag()

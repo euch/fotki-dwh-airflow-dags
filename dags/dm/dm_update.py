@@ -4,7 +4,7 @@ from airflow.sdk import dag, Asset
 from config import *
 
 schedule = [
-    Asset(AssetName.CORE_TREE_UPDATED) | Asset(AssetName.CORE_METADATA_UPDATED) | Asset(AssetName.CORE_CAPTION_UPDATED)]
+    Asset(AssetName.CORE_UPDATED) | Asset(AssetName.CORE_UPDATED) | Asset(AssetName.CORE_UPDATED)]
 tags = {
     DagTag.DWH_MARTS,
     DagTag.PG,

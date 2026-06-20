@@ -8,67 +8,16 @@ from airflow.providers.postgres.hooks.postgres import PostgresHook
 from airflow.providers.standard.operators.empty import EmptyOperator
 from airflow.providers.standard.operators.trigger_dagrun import TriggerDagRunOperator
 from airflow.sdk import Asset, Variable, dag, task
-from airflow.timetables.assets import AssetOrTimeSchedule
-from airflow.timetables.trigger import CronTriggerTimetable
 
 from config import *
+from core import DagId
 
-schedule = AssetOrTimeSchedule(
-    timetable=CronTriggerTimetable("0 23 * * *", timezone='UTC'),
-    assets=Asset(AssetName.CORE_METADATA_UPDATED))
 tags = {
     DagTag.DWH_CORE,
     DagTag.HELPERS,
     DagTag.PG,
     DagTag.SMB,
 }
-dag_id = 'core_caption_update'
-
-_missing_caption_select_sql = '''
-select
-    distinct on (m.hash)
-    m.hash,
-    m.preview,
-    m.abs_filename,
-    CASE 
-        WHEN COUNT(*) OVER() >= 5 THEN true 
-        ELSE false 
-    END as has_more_pages
-from
-    core.metadata m
-left join core.caption c on
-    c.hash = m.hash
-join core.tree t on
-    t.abs_filename = m.abs_filename
-where
-    c.hash is null
-    and m.preview is not null
-    and t."type" = %s
-order by
-    m.hash, m.abs_filename desc
-limit 5;
-'''
-
-_caption_conf_select_sql = '''
-select id, model, prompt from core.current_caption_conf;
-'''
-
-_caption_insert_sql = f'''
-insert
-	into
-	core.caption
-(hash, caption_conf_id,	caption)
-values(%s, %s, %s);
-'''
-
-_log_update_sql = '''
-update
-	log.core_log
-set
-	caption_add_ts = now()
-where
-	abs_filename = %s
-'''
 
 
 class CaptionStatus(str, Enum):
@@ -80,12 +29,12 @@ class CaptionStatus(str, Enum):
         return str(self.value)
 
 
-@dag(dag_id=dag_id, max_active_runs=1, default_args=dag_args_noretry, schedule=schedule, tags=tags)
-def core_caption_update():
+@dag(dag_id=DagId.CORE_CAPTION_UPDATE, max_active_runs=1, default_args=dag_args_noretry, schedule=None, tags=tags)
+def dag():
     @task
     def get_caption_conf():
         pg_hook = PostgresHook.get_hook(Conn.POSTGRES)
-        row = pg_hook.get_records(_caption_conf_select_sql)[0]
+        row = pg_hook.get_records('sql/caption_select_conf.sql')[0]
         return {
             "caption_conf_id": row[0],
             "model": row[1],
@@ -112,7 +61,7 @@ def core_caption_update():
 
         return False
 
-    trigger_again = TriggerDagRunOperator(task_id='trigger_again', trigger_dag_id=dag_id)
+    trigger_again = TriggerDagRunOperator(task_id='trigger_again', trigger_dag_id=DagId.CORE_CAPTION_UPDATE)
 
     @task.short_circuit()
     def some_records_processed(results: list[CaptionStatus]):
@@ -122,7 +71,7 @@ def core_caption_update():
 
         return False
 
-    create_asset = EmptyOperator(task_id='create_asset', outlets=[Asset(AssetName.CORE_CAPTION_UPDATED)])
+    create_asset = EmptyOperator(task_id='create_asset', outlets=[Asset(AssetName.CORE_UPDATED)])
 
     caption_conf = get_caption_conf()
 
@@ -137,7 +86,7 @@ def core_caption_update():
     some_records_processed([process_collection]) >> create_asset
 
 
-core_caption_update()
+dag()
 
 
 def _add_missing_caption(caption_conf: dict, tree_type: str, limit: int) -> CaptionStatus:
@@ -145,7 +94,7 @@ def _add_missing_caption(caption_conf: dict, tree_type: str, limit: int) -> Capt
     processed_count = 0
 
     while True:
-        records = pg_hook.get_records(_missing_caption_select_sql, parameters=[tree_type])
+        records = pg_hook.get_records('sql/caption_select_missing.sql', parameters=[tree_type])
 
         if len(records) == 0:
             return CaptionStatus.NO_RECORDS_FOUND
@@ -153,8 +102,8 @@ def _add_missing_caption(caption_conf: dict, tree_type: str, limit: int) -> Capt
         for _hash, preview, abs_filename, has_more_records in records:
             image_base64 = base64.b64encode(io.BytesIO(preview).read()).decode('utf-8')
             captions = _get_captions(caption_conf, image_base64)
-            pg_hook.run(_caption_insert_sql, parameters=[_hash, caption_conf['caption_conf_id'], captions])
-            pg_hook.run(_log_update_sql, parameters=[abs_filename])
+            pg_hook.run('sql/caption_insert.sql', parameters=[_hash, caption_conf['caption_conf_id'], captions])
+            pg_hook.run('sql/caption_update_log.sql', parameters=[abs_filename])
             processed_count += 1
 
             if has_more_records:

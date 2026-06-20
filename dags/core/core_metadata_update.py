@@ -10,8 +10,8 @@ from airflow.providers.standard.operators.empty import EmptyOperator
 from airflow.sdk import Asset, dag, task, Variable
 
 from config import *
+from core import DagId
 
-schedule = [Asset(AssetName.CORE_TREE_UPDATED)]
 tags = {
     DagTag.DWH_CORE,
     DagTag.HELPERS,
@@ -21,8 +21,8 @@ tags = {
 }
 
 
-@dag(max_active_runs=1, default_args=dag_args_retry, schedule=schedule, tags=tags)
-def core_metadata_update():
+@dag(dag_id=DagId.CORE_METADATA_UPDATE, max_active_runs=1, default_args=dag_args_retry, schedule=None, tags=tags)
+def dag():
     @task
     def add_missing_metadata_collection():
         return _add_missing_metadata(Conn.SMB_COLLECTION, VariableName.STORAGE_PATH_COLLECTION, 'collection')
@@ -39,7 +39,7 @@ def core_metadata_update():
     _add_missing_metadata_trash = add_missing_metadata_trash()
     _add_missing_metadata_archive = add_missing_metadata_archive()
 
-    some_metadata_added = EmptyOperator(task_id='some_metadata_added', outlets=[Asset(AssetName.CORE_METADATA_UPDATED)])
+    some_metadata_added = EmptyOperator(task_id='some_metadata_added', outlets=[Asset(AssetName.CORE_UPDATED)])
     none_metadata_added = EmptyOperator(task_id='none_metadata_added', outlets=[])
 
     @task.branch
@@ -56,60 +56,10 @@ def core_metadata_update():
     _choose_branch >> [some_metadata_added, none_metadata_added]
 
 
-core_metadata_update()
+dag()
 
-_missing_metadata_select_sql = '''
-select
-	t.abs_filename,
-    CASE 
-        WHEN COUNT(*) OVER() >= 5 THEN true 
-        ELSE false 
-    END as has_more_pages
-from
-	core.tree t
-left join core.metadata m on
-	m.abs_filename = t.abs_filename
-where
-	t.size < 1000000000
-	-- up to 1 GB limit
-	and t.type = %s
-	and (m.abs_filename is null --metadata does not exist 
-		-- or metadata exist, but has empty values 
-		or m.hash is null
-	)
-	and t.abs_filename not in %s
-order by
-    t.abs_filename desc
-limit 5
-;
-'''
 
-_insert_metadata_sql = '''
-insert
-	into core.metadata 
-    (abs_filename, hash, exif, preview)
-values (%s,%s,%s,%s)
-on conflict (abs_filename) do
-update
-set
-	hash = EXCLUDED.hash,
-	exif = EXCLUDED.exif,
-	preview = EXCLUDED.preview
-where
-	core.metadata.hash is distinct from	EXCLUDED.hash
-	or core.metadata.exif::text is distinct from EXCLUDED.exif::text
-	or core.metadata.preview is distinct from EXCLUDED.preview;
-'''
 
-_update_log_sql = """
-update
-    log.core_log 
-set 
-    metadata_add_ts = now(),
-    hash = %s
-where
-    abs_filename = %s;
-"""
 
 
 def _add_missing_metadata(smb_conn_name: str, remote_root_path_varname: str, tree_type: str):
@@ -127,7 +77,7 @@ def _add_missing_metadata(smb_conn_name: str, remote_root_path_varname: str, tre
         }
 
     while True:
-        records = pg_hook.get_records(_missing_metadata_select_sql,
+        records = pg_hook.get_records('sql/metadata_select_missing.sql',
                                       parameters=[tree_type, tuple(corrupt_abs_filenames)])
 
         if not records:
@@ -150,8 +100,8 @@ def _add_missing_metadata(smb_conn_name: str, remote_root_path_varname: str, tre
                     if not exif or not preview:
                         corrupt_abs_filenames.add(abs_filename)
 
-                    pg_hook.run(_insert_metadata_sql, parameters=[abs_filename, resp['hash'], exif, preview])
-                    pg_hook.run(_update_log_sql, parameters=(resp['hash'], abs_filename))
+                    pg_hook.run('sql/metadata_insert.sql', parameters=[abs_filename, resp['hash'], exif, preview])
+                    pg_hook.run('sql/metadata_update_log.sql', parameters=(resp['hash'], abs_filename))
                     some_added = True
                 else:
                     raise AirflowException(

@@ -26,4 +26,4 @@ from
 where
 	"type" = 'trash'
 on
-	conflict (abs_filename) do nothing;
+	conflict (abs_filename) do nothing

@@ -1,4 +1,5 @@
 begin;
+
 create temporary table old_files as (
   select
     core.tree.abs_filename
@@ -58,4 +59,5 @@ where
   );
 drop
   table old_files;
+
 commit;

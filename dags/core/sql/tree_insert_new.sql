@@ -1,4 +1,5 @@
 begin;
+
 create temporary table new_files as (
   select
     *
@@ -33,4 +34,5 @@ from
   new_files;
 drop
   table new_files;
+
 commit;

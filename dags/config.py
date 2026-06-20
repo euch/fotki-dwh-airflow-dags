@@ -32,9 +32,7 @@ class DagTag:
 
 
 class AssetName:
-    CORE_TREE_UPDATED = 'core_tree_updated'
-    CORE_METADATA_UPDATED = 'core_metadata_updated'
-    CORE_CAPTION_UPDATED = 'core_caption_updated'
+    CORE_UPDATED = 'core_updated'
 
 
 class ImportSettings:
