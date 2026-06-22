@@ -1,5 +1,6 @@
 import base64
 import json
+import os
 
 import psycopg2 as psql
 import requests
@@ -11,7 +12,6 @@ from airflow.sdk import Asset, dag, task, Variable
 
 from config import *
 from core import DagId
-
 
 
 @dag(dag_id=DagId.CORE_METADATA_UPDATE, max_active_runs=1, default_args=dag_args_retry)
@@ -52,9 +52,6 @@ def dag():
 dag()
 
 
-
-
-
 def _add_missing_metadata(smb_conn_name: str, remote_root_path_varname: str, tree_type: str):
     pg_hook = PostgresHook.get_hook(Conn.POSTGRES)
     smb_hook = SambaHook.get_hook(smb_conn_name)
@@ -70,8 +67,8 @@ def _add_missing_metadata(smb_conn_name: str, remote_root_path_varname: str, tre
         }
 
     while True:
-        records = pg_hook.get_records('sql/metadata_select_missing.sql',
-                                      parameters=[tree_type, tuple(corrupt_abs_filenames)])
+        with open(os.path.join(os.path.dirname(__file__), 'sql', 'metadata_select_missing.sql'), 'r') as f:
+            records = pg_hook.get_records(f.read(), parameters=[tree_type, tuple(corrupt_abs_filenames)])
 
         if not records:
             return result_dict()
@@ -93,8 +90,12 @@ def _add_missing_metadata(smb_conn_name: str, remote_root_path_varname: str, tre
                     if not exif or not preview:
                         corrupt_abs_filenames.add(abs_filename)
 
-                    pg_hook.run('sql/metadata_insert.sql', parameters=[abs_filename, resp['hash'], exif, preview])
-                    pg_hook.run('sql/metadata_update_log.sql', parameters=(resp['hash'], abs_filename))
+                    with open(os.path.join(os.path.dirname(__file__), 'sql', 'metadata_insert.sql'), 'r') as f:
+                        pg_hook.run(f.read(), parameters=[abs_filename, resp['hash'], exif, preview])
+
+                    with open(os.path.join(os.path.dirname(__file__), 'sql', 'metadata_update_log.sql'), 'r') as f:
+                        pg_hook.run(f.read(), parameters=(resp['hash'], abs_filename))
+
                     some_added = True
                 else:
                     raise AirflowException(
