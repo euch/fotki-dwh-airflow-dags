@@ -1,11 +1,18 @@
+from datetime import timedelta
+
 from airflow.providers.common.sql.operators.sql import SQLExecuteQueryOperator
 from airflow.sdk import dag, Asset
+from airflow.timetables.assets import AssetOrTimeSchedule
+from airflow.timetables.trigger import DeltaTriggerTimetable
 
 from config import *
 
+schedule = AssetOrTimeSchedule(
+    timetable=DeltaTriggerTimetable(timedelta(hours=1)),
+    assets=[Asset(AssetName.CORE_UPDATED)])
 
 
-@dag(schedule=[Asset(AssetName.CORE_UPDATED)], default_args=dag_args_noretry, max_active_runs=1)
+@dag(schedule=schedule, default_args=dag_args_noretry, max_active_runs=1)
 def dm_update():
     SQLExecuteQueryOperator(
         task_id='dm_counts_insert',
