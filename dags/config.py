@@ -2,10 +2,6 @@ dag_args_noretry = {
     'retries': 0,
 }
 
-dag_args_retry = {
-    'retries': 10,
-}
-
 
 class Conn:
     POSTGRES = 'postgres'

@@ -14,7 +14,7 @@ from config import *
 from core import DagId
 
 
-@dag(dag_id=DagId.CORE_METADATA_UPDATE, max_active_runs=1, default_args=dag_args_retry)
+@dag(dag_id=DagId.CORE_METADATA_UPDATE, max_active_runs=1, default_args=dag_args_noretry)
 def dag():
     @task
     def add_missing_metadata_collection():

@@ -5,7 +5,7 @@ from config import *
 
 
 
-@dag(schedule=[Asset(AssetName.CORE_UPDATED)], default_args=dag_args_retry, max_active_runs=1)
+@dag(schedule=[Asset(AssetName.CORE_UPDATED)], default_args=dag_args_noretry, max_active_runs=1)
 def dm_update():
     SQLExecuteQueryOperator(
         task_id='dm_counts_insert',
