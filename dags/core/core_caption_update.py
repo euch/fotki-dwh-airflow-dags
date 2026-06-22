@@ -1,5 +1,6 @@
 import base64
 import io
+import os
 from enum import Enum
 
 import requests
@@ -26,8 +27,8 @@ class CaptionStatus(str, Enum):
 def dag():
     @task
     def get_caption_conf():
-        pg_hook = PostgresHook.get_hook(Conn.POSTGRES)
-        row = pg_hook.get_records('sql/caption_select_conf.sql')[0]
+        with open(os.path.join(os.path.dirname(__file__), 'sql', 'caption_select_conf.sql'), 'r') as f:
+            row = PostgresHook.get_hook(Conn.POSTGRES).get_records(f.read())[0]
         return {
             "caption_conf_id": row[0],
             "model": row[1],
@@ -87,7 +88,8 @@ def _add_missing_caption(caption_conf: dict, tree_type: str, limit: int) -> Capt
     processed_count = 0
 
     while True:
-        records = pg_hook.get_records('sql/caption_select_missing.sql', parameters=[tree_type])
+        with open(os.path.join(os.path.dirname(__file__), 'sql', 'caption_select_missing.sql'), 'r') as f:
+            records = pg_hook.get_records(f.read(), parameters=[tree_type])
 
         if len(records) == 0:
             return CaptionStatus.NO_RECORDS_FOUND
@@ -95,8 +97,10 @@ def _add_missing_caption(caption_conf: dict, tree_type: str, limit: int) -> Capt
         for _hash, preview, abs_filename, has_more_records in records:
             image_base64 = base64.b64encode(io.BytesIO(preview).read()).decode('utf-8')
             captions = _get_captions(caption_conf, image_base64)
-            pg_hook.run('sql/caption_insert.sql', parameters=[_hash, caption_conf['caption_conf_id'], captions])
-            pg_hook.run('sql/caption_update_log.sql', parameters=[abs_filename])
+            with open(os.path.join(os.path.dirname(__file__), 'sql', 'caption_insert.sql'), 'r') as f:
+                pg_hook.run(f.read(), parameters=[_hash, caption_conf['caption_conf_id'], captions])
+            with open(os.path.join(os.path.dirname(__file__), 'sql', 'caption_update_log.sql'), 'r') as f:
+                pg_hook.run(f.read(), parameters=[abs_filename])
             processed_count += 1
 
             if has_more_records:
