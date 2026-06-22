@@ -9,7 +9,6 @@ dag_args_retry = {
 
 class Conn:
     POSTGRES = 'postgres'
-    MINIO = 'minio'
 
     SMB_ARCHIVE = "storage_smb_archive"
     SMB_COLLECTION = "storage_smb_collection"
