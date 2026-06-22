@@ -23,7 +23,9 @@ select
   abs_filename,
   last_modified_ts,
   "size",
-  "type"
+  "type",
+  base_path,
+  relative_path
 from
   new_files;
 insert into log.core_log (abs_filename, tree_add_ts)

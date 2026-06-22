@@ -35,7 +35,7 @@ CREATE TABLE core.caption_conf ( id serial4 NOT NULL, model varchar NOT NULL, pr
 
 -- DROP TABLE core.tree;
 
-CREATE TABLE core.tree ( abs_filename varchar NOT NULL, "size" int8 NOT NULL, last_modified_ts int8 NOT NULL, "type" varchar NOT NULL, CONSTRAINT tree_pk PRIMARY KEY (abs_filename));
+CREATE TABLE core.tree ( abs_filename varchar NOT NULL, "size" int8 NOT NULL, last_modified_ts int8 NOT NULL, "type" varchar NOT NULL, base_path varchar NOT NULL, relative_path varchar NOT NULL, CONSTRAINT tree_pk PRIMARY KEY (abs_filename));
 
 
 -- core.caption_conf_selection definition
@@ -55,15 +55,6 @@ CREATE TABLE core.caption_conf_selection ( selection_ts timestamptz DEFAULT now(
 
 CREATE TABLE core.metadata ( abs_filename varchar NOT NULL, hash varchar NOT NULL, exif json NULL, preview bytea NULL, CONSTRAINT metadata_pk PRIMARY KEY (abs_filename), CONSTRAINT metadata_fk FOREIGN KEY (abs_filename) REFERENCES core.tree(abs_filename) ON DELETE CASCADE ON UPDATE RESTRICT);
 CREATE INDEX metadata_hash_idx ON core.metadata USING btree (hash);
-
-
--- core.tree_rel_path definition
-
--- Drop table
-
--- DROP TABLE core.tree_rel_path;
-
-CREATE TABLE core.tree_rel_path ( abs_filename varchar NOT NULL, rel_filename varchar NOT NULL, CONSTRAINT tree_rel_path_pk PRIMARY KEY (abs_filename), CONSTRAINT tree_rel_path_fk FOREIGN KEY (abs_filename) REFERENCES core.tree(abs_filename) ON DELETE CASCADE ON UPDATE RESTRICT);
 
 
 -- core.current_caption_conf source
@@ -103,6 +94,15 @@ CREATE SCHEMA dm AUTHORIZATION postgres;
 -- DROP TABLE dm.caption_count_by_type;
 
 CREATE TABLE dm.caption_count_by_type ( ts timestamptz DEFAULT now() NOT NULL, "type" varchar NOT NULL, caption_conf_id int4 NULL, model varchar NOT NULL, count int8 NOT NULL);
+
+
+-- dm.collection_duplicates definition
+
+-- Drop table
+
+-- DROP TABLE dm.collection_duplicates;
+
+CREATE TABLE dm.collection_duplicates ( abs_filename varchar NOT NULL, hash varchar NOT NULL, preview bytea NULL, cnt int8 NOT NULL, "delete" bool DEFAULT false NOT NULL, CONSTRAINT collection_duplicates_pk PRIMARY KEY (abs_filename));
 
 
 -- dm.counts definition
@@ -183,8 +183,8 @@ AS SELECT (string_to_array(abs_filename::text, '/'::text, NULL::text))[5] AS col
 -- dm.col_images source
 
 CREATE OR REPLACE VIEW dm.col_images
-AS SELECT trp.abs_filename,
-    trp.rel_filename,
+AS SELECT t.abs_filename,
+    t.relative_path AS rel_filename,
     split_part(t.abs_filename::text, '/'::text, '-1'::integer) AS short_filename,
     "left"(t.abs_filename::text, length(t.abs_filename::text) - POSITION(('/'::text) IN (reverse(t.abs_filename::text)))) AS directory,
     m.preview,
@@ -193,11 +193,10 @@ AS SELECT trp.abs_filename,
     m.exif ->> 'EXIF BodySerialNumber'::text AS exif_body_sn,
     m.exif ->> 'Image Make'::text AS exif_body_maker,
     m.exif ->> 'Image Model'::text AS exif_body_model
-   FROM core.tree_rel_path trp
-     JOIN core.tree t ON t.abs_filename::text = trp.abs_filename::text
-     LEFT JOIN core.metadata m ON m.abs_filename::text = trp.abs_filename::text
+   FROM core.tree t
+     LEFT JOIN core.metadata m ON m.abs_filename::text = t.abs_filename::text
      LEFT JOIN core.latest_caption lc ON lc.hash::text = m.hash::text
-  WHERE t.type::text = 'collection'::text AND (upper(split_part(trp.rel_filename::text, '.'::text, '-1'::integer)) = ANY (ARRAY['JPG'::text, 'JPEG'::text, 'PNG'::text, 'GIF'::text, 'HEIC'::text, 'NEF'::text, 'RW2'::text]));
+  WHERE t.type::text = 'collection'::text AND (upper(split_part(t.relative_path::text, '.'::text, '-1'::integer)) = ANY (ARRAY['JPG'::text, 'JPEG'::text, 'PNG'::text, 'GIF'::text, 'HEIC'::text, 'NEF'::text, 'RW2'::text]));
 
 
 -- dm.col_images_birds source
@@ -241,42 +240,12 @@ AS SELECT m.abs_filename,
 -- dm.col_videos source
 
 CREATE OR REPLACE VIEW dm.col_videos
-AS SELECT trp.abs_filename,
-    trp.rel_filename,
-    split_part(t.abs_filename::text, '/'::text, '-1'::integer) AS short_filename,
-    "left"(t.abs_filename::text, length(t.abs_filename::text) - POSITION(('/'::text) IN (reverse(t.abs_filename::text)))) AS directory
-   FROM core.tree_rel_path trp
-     JOIN core.tree t ON t.abs_filename::text = trp.abs_filename::text
-  WHERE t.type::text = 'collection'::text AND (upper(split_part(trp.rel_filename::text, '.'::text, '-1'::integer)) = ANY (ARRAY['MOV'::text, 'MP4'::text]));
-
-
--- dm.ignored_files source
-
-CREATE OR REPLACE VIEW dm.ignored_files
 AS SELECT abs_filename,
-    type,
-    last_modified_ts,
-    size
-   FROM ( SELECT tree_collection.abs_filename,
-            'collection'::text AS type,
-            tree_collection.last_modified_ts,
-            tree_collection.size
-           FROM raw.tree_collection
-        UNION
-         SELECT tree_trash.abs_filename,
-            'trash'::text AS type,
-            tree_trash.last_modified_ts,
-            tree_trash.size
-           FROM raw.tree_trash
-        UNION
-         SELECT tree_archive.abs_filename,
-            'archive'::text AS type,
-            tree_archive.last_modified_ts,
-            tree_archive.size
-           FROM raw.tree_archive) e
-  WHERE NOT (EXISTS ( SELECT 1
-           FROM raw.tree_all t
-          WHERE t.abs_filename::text = e.abs_filename::text));
+    relative_path AS rel_filename,
+    split_part(abs_filename::text, '/'::text, '-1'::integer) AS short_filename,
+    "left"(abs_filename::text, length(abs_filename::text) - POSITION(('/'::text) IN (reverse(abs_filename::text)))) AS directory
+   FROM core.tree t
+  WHERE type::text = 'collection'::text AND (upper(split_part(relative_path::text, '.'::text, '-1'::integer)) = ANY (ARRAY['MOV'::text, 'MP4'::text]));
 
 
 -- dm.weird_files source
@@ -297,42 +266,6 @@ AS WITH weird_file_types AS (
            FROM core.tree t
           WHERE t.abs_filename::text ~~ ('%.'::text || wtf.file_type) OR wtf.file_type = t.abs_filename::text) AS abs_filenames
    FROM weird_file_types wtf;
-
--- DROP SCHEMA duplicates;
-
-CREATE SCHEMA duplicates AUTHORIZATION postgres;
--- duplicates.collection_duplicates definition
-
--- Drop table
-
--- DROP TABLE duplicates.collection_duplicates;
-
-CREATE TABLE duplicates.collection_duplicates ( abs_filename varchar NOT NULL, hash varchar NOT NULL, preview bytea NULL, cnt int8 NOT NULL, "delete" bool DEFAULT false NOT NULL, CONSTRAINT collection_duplicates_pk PRIMARY KEY (abs_filename));
-
-
--- duplicates.collection_repeated_imports source
-
-CREATE OR REPLACE VIEW duplicates.collection_repeated_imports
-AS WITH col_ts_dirs AS (
-         SELECT (string_to_array(collection_duplicates.abs_filename::text, '/'::text, NULL::text))[5] AS col_ts_dir,
-            collection_duplicates.abs_filename,
-            collection_duplicates.hash
-           FROM duplicates.collection_duplicates
-          WHERE collection_duplicates.abs_filename::text ~~ '/storage/fotki/collection/%'::text
-        ), col_ts_dir_dates AS (
-         SELECT (regexp_matches(col_ts_dirs.col_ts_dir, '(\d{4})-(\d{2})-(\d{2})'::text))[1] AS year,
-            (regexp_matches(col_ts_dirs.col_ts_dir, '(\d{4})-(\d{2})-(\d{2})'::text))[2] AS month,
-            (regexp_matches(col_ts_dirs.col_ts_dir, '(\d{4})-(\d{2})-(\d{2})'::text))[3] AS day,
-            col_ts_dirs.hash,
-            col_ts_dirs.col_ts_dir,
-            col_ts_dirs.abs_filename
-           FROM col_ts_dirs
-        )
- SELECT abs_filename
-   FROM col_ts_dir_dates a
-  WHERE col_ts_dir ~~ '%-auto'::text AND (EXISTS ( SELECT 1
-           FROM col_ts_dir_dates m
-          WHERE m.col_ts_dir ~~ (((((a.year || '-'::text) || a.month) || '-'::text) || a.day) || '%'::text) AND m.col_ts_dir !~~ '%-auto'::text));
 
 -- DROP SCHEMA log;
 
@@ -357,58 +290,67 @@ CREATE TABLE log.core_log ( abs_filename varchar NOT NULL, tree_add_ts timestamp
 -- DROP SCHEMA raw;
 
 CREATE SCHEMA raw AUTHORIZATION postgres;
+-- raw.tree_archive definition
 
--- raw.ignored source
+-- Drop table
 
-CREATE OR REPLACE VIEW raw.ignored
-AS SELECT abs_filename,
-    type,
-    last_modified_ts,
-    size
-   FROM ( SELECT tree_collection.abs_filename,
-            'collection'::text AS type,
-            tree_collection.last_modified_ts,
-            tree_collection.size
-           FROM raw.tree_collection
-        UNION
-         SELECT tree_trash.abs_filename,
-            'trash'::text AS type,
-            tree_trash.last_modified_ts,
-            tree_trash.size
-           FROM raw.tree_trash
-        UNION
-         SELECT tree_archive.abs_filename,
-            'archive'::text AS type,
-            tree_archive.last_modified_ts,
-            tree_archive.size
-           FROM raw.tree_archive) e
-  WHERE NOT (EXISTS ( SELECT 1
-           FROM raw.tree_all t
-          WHERE t.abs_filename::text = e.abs_filename::text));
+-- DROP TABLE raw.tree_archive;
+
+CREATE TABLE raw.tree_archive ( abs_filename varchar NOT NULL, last_modified_ts int8 NOT NULL, "size" int8 NOT NULL, snapshot_time timestamptz NOT NULL, base_path varchar NOT NULL, relative_path varchar NOT NULL);
+
+
+-- raw.tree_collection definition
+
+-- Drop table
+
+-- DROP TABLE raw.tree_collection;
+
+CREATE TABLE raw.tree_collection ( abs_filename varchar NOT NULL, last_modified_ts int8 NOT NULL, "size" int8 NOT NULL, snapshot_time timestamptz NOT NULL, base_path varchar NOT NULL, relative_path varchar NOT NULL);
+
+
+-- raw.tree_trash definition
+
+-- Drop table
+
+-- DROP TABLE raw.tree_trash;
+
+CREATE TABLE raw.tree_trash ( abs_filename varchar NOT NULL, last_modified_ts int8 NOT NULL, "size" int8 NOT NULL, snapshot_time timestamptz NOT NULL, base_path varchar NOT NULL, relative_path varchar NOT NULL);
 
 
 -- raw.tree_all source
 
 CREATE OR REPLACE VIEW raw.tree_all
-AS SELECT abs_filename,
-    type,
+AS SELECT type,
+    abs_filename,
     last_modified_ts,
-    size
-   FROM ( SELECT tree_collection.abs_filename,
-            'collection'::text AS type,
+    size,
+    snapshot_time,
+    base_path,
+    relative_path
+   FROM ( SELECT 'collection'::text AS type,
+            tree_collection.abs_filename,
             tree_collection.last_modified_ts,
-            tree_collection.size
+            tree_collection.size,
+            tree_collection.snapshot_time,
+            tree_collection.base_path,
+            tree_collection.relative_path
            FROM raw.tree_collection
         UNION
-         SELECT tree_trash.abs_filename,
-            'trash'::text AS type,
+         SELECT 'trash'::text AS type,
+            tree_trash.abs_filename,
             tree_trash.last_modified_ts,
-            tree_trash.size
+            tree_trash.size,
+            tree_trash.snapshot_time,
+            tree_trash.base_path,
+            tree_trash.relative_path
            FROM raw.tree_trash
         UNION
-         SELECT tree_archive.abs_filename,
-            'archive'::text AS type,
+         SELECT 'archive'::text AS type,
+            tree_archive.abs_filename,
             tree_archive.last_modified_ts,
-            tree_archive.size
+            tree_archive.size,
+            tree_archive.snapshot_time,
+            tree_archive.base_path,
+            tree_archive.relative_path
            FROM raw.tree_archive) unnamed_subquery
   WHERE abs_filename::text !~~* '%/CaptureOne/%'::text AND abs_filename::text !~~* '%.xmp'::text AND size <> 0 AND abs_filename::text !~~ '%/.%'::text AND abs_filename::text !~~ '%/tree.csv'::text AND (abs_filename::text ~~* '%.RW2'::text OR abs_filename::text ~~* '%.JPG'::text OR abs_filename::text ~~* '%.JPEG'::text OR abs_filename::text ~~* '%.HEIC'::text OR abs_filename::text ~~* '%.NEF'::text OR abs_filename::text ~~* '%.GIF'::text OR abs_filename::text ~~* '%.PNG'::text OR abs_filename::text ~~* '%.MP4'::text OR abs_filename::text ~~* '%.MOV'::text);
