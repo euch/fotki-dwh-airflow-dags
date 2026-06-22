@@ -1,5 +1,6 @@
+truncate table dm.collection_duplicates;
 
-insert into duplicates.collection_duplicates
+insert into dm.collection_duplicates
 with dup_hash as (
     select hash, count(*) as cnt from core.metadata m
     join core.tree t on t.abs_filename = m.abs_filename

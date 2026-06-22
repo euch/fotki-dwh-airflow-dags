@@ -12,16 +12,9 @@ from airflow.sdk import Asset, dag, task, Variable
 from config import *
 from core import DagId
 
-tags = {
-    DagTag.DWH_CORE,
-    DagTag.HELPERS,
-    DagTag.STORAGE_IO,
-    DagTag.PG,
-    DagTag.SMB,
-}
 
 
-@dag(dag_id=DagId.CORE_METADATA_UPDATE, max_active_runs=1, default_args=dag_args_retry, schedule=None, tags=tags)
+@dag(dag_id=DagId.CORE_METADATA_UPDATE, max_active_runs=1, default_args=dag_args_retry)
 def dag():
     @task
     def add_missing_metadata_collection():

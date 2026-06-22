@@ -9,10 +9,6 @@ from airflow.timetables.trigger import DeltaTriggerTimetable
 from config import *
 
 schedule = DeltaTriggerTimetable(timedelta(hours=1))
-tags = {
-    DagTag.HELPERS,
-    DagTag.MONITORING,
-}
 
 
 def check_http(url: str):
@@ -24,7 +20,7 @@ def check_http(url: str):
         pass
 
 
-@dag(max_active_runs=1, default_args=dag_args_noretry, schedule=schedule, tags=tags)
+@dag(max_active_runs=1, default_args=dag_args_noretry, schedule=schedule)
 def service_check():
     @task
     def check_metadata():

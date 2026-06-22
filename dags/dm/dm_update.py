@@ -3,43 +3,43 @@ from airflow.sdk import dag, Asset
 
 from config import *
 
-schedule = [
-    Asset(AssetName.CORE_UPDATED) | Asset(AssetName.CORE_UPDATED) | Asset(AssetName.CORE_UPDATED)]
-tags = {
-    DagTag.DWH_MARTS,
-    DagTag.PG,
-}
 
 
-@dag(schedule=schedule, tags=tags, default_args=dag_args_retry, max_active_runs=1)
+@dag(schedule=[Asset(AssetName.CORE_UPDATED)], default_args=dag_args_retry, max_active_runs=1)
 def dm_update():
     SQLExecuteQueryOperator(
         task_id='dm_counts_insert',
         conn_id=Conn.POSTGRES,
-        sql='sql/dm_counts_insert.sql')
+        sql='sql/counts_insert.sql')
 
     SQLExecuteQueryOperator(
         task_id='dm_file_types_insert',
         conn_id=Conn.POSTGRES,
-        sql='sql/dm_file_types_insert.sql',
+        sql='sql/files_and_types_insert.sql',
         do_xcom_push=False)
 
     SQLExecuteQueryOperator(
         task_id='dm_total_counts_insert',
         conn_id=Conn.POSTGRES,
-        sql='sql/dm_total_count_by_type_insert.sql',
+        sql='sql/total_count_by_type_insert.sql',
         do_xcom_push=False)
 
     SQLExecuteQueryOperator(
         task_id='dm_preview_count_by_type_insert',
         conn_id=Conn.POSTGRES,
-        sql='sql/dm_preview_count_by_type_insert.sql',
+        sql='sql/preview_count_by_type_insert.sql',
         do_xcom_push=False)
 
     SQLExecuteQueryOperator(
         task_id='caption_count_by_type',
         conn_id=Conn.POSTGRES,
-        sql='sql/dm_caption_count_by_type.sql',
+        sql='sql/caption_count_by_type_insert.sql',
+        do_xcom_push=False)
+
+    SQLExecuteQueryOperator(
+        task_id='collection_duplicates_truncate_insert',
+        conn_id=Conn.POSTGRES,
+        sql='sql/collection_duplicates_truncate_insert.sql',
         do_xcom_push=False)
 
 

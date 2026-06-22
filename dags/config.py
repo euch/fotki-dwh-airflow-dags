@@ -16,27 +16,8 @@ class Conn:
     SMB_TRASH = "storage_smb_trash"
 
 
-class DagTag:
-    CLEANUP = 'cleanup'
-    MONITORING = 'monitoring'
-    PG = 'pg'
-    SMB = 'smb'
-
-    DWH_RAW = 'dwh_raw'
-    DWH_CORE = 'dwh_core'
-    DWH_MARTS = 'dwh_marts'
-
-    DUPLICATES = 'duplicates'
-    HELPERS = 'helpers'
-    STORAGE_IO = 'storage_io'
-
-
 class AssetName:
     CORE_UPDATED = 'core_updated'
-
-
-class ImportSettings:
-    TIMESTAMP_FMT = '%Y-%m-%d-auto'
 
 
 class VariableName:

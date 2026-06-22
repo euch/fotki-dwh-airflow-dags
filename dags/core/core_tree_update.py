@@ -6,13 +6,8 @@ from airflow.sdk import Asset, Variable, dag
 from config import *
 from core import DagId
 
-tags = {
-    DagTag.DWH_CORE,
-    DagTag.PG,
-}
 
-
-@dag(dag_id=DagId.CORE_TREE_UPDATE, max_active_runs=1, default_args=dag_args_noretry, schedule=None, tags=tags)
+@dag(dag_id=DagId.CORE_TREE_UPDATE, max_active_runs=1, default_args=dag_args_noretry)
 def dag():
     SqlSensor(
         task_id='check_raw_differs',

@@ -6,11 +6,8 @@ from config import *
 from core import DagId
 
 schedule = CronTriggerTimetable('10,40 * * * *', timezone='UTC')
-tags = {
-    DagTag.DWH_CORE,
-    DagTag.PG,
-}
-with (DAG(dag_id=DagId.CORE_MAIN, max_active_runs=1, schedule=schedule, default_args=dag_args_noretry, tags=tags)):
+
+with (DAG(dag_id=DagId.CORE_MAIN, max_active_runs=1, schedule=schedule, default_args=dag_args_noretry)):
     trigger_tree_update = TriggerDagRunOperator(task_id='trigger_tree_update',
                                                 trigger_dag_id=DagId.CORE_TREE_UPDATE.value,
                                                 reset_dag_run=True,

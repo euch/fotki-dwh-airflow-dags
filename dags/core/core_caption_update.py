@@ -12,13 +12,6 @@ from airflow.sdk import Asset, Variable, dag, task
 from config import *
 from core import DagId
 
-tags = {
-    DagTag.DWH_CORE,
-    DagTag.HELPERS,
-    DagTag.PG,
-    DagTag.SMB,
-}
-
 
 class CaptionStatus(str, Enum):
     NO_RECORDS_FOUND = 'no_records_found'
@@ -29,7 +22,7 @@ class CaptionStatus(str, Enum):
         return str(self.value)
 
 
-@dag(dag_id=DagId.CORE_CAPTION_UPDATE, max_active_runs=1, default_args=dag_args_noretry, schedule=None, tags=tags)
+@dag(dag_id=DagId.CORE_CAPTION_UPDATE, max_active_runs=1, default_args=dag_args_noretry)
 def dag():
     @task
     def get_caption_conf():
