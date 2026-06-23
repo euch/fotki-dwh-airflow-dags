@@ -16,8 +16,12 @@ create temporary table new_files as (
     )
 );
 insert into core.tree (
-  abs_filename, last_modified_ts, "size",
-  "type"
+  abs_filename,
+  last_modified_ts,
+  "size",
+  "type",
+  base_path,
+  relative_path
 )
 select
   abs_filename,
