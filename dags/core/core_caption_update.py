@@ -36,16 +36,8 @@ def dag():
         }
 
     @task()
-    def add_missing_caption_collection(settings: dict):
-        return _add_missing_caption(settings, 'collection', 1000)
-
-    @task()
-    def add_missing_caption_archive(settings: dict):
-        return _add_missing_caption(settings, 'archive', 100)
-
-    @task()
-    def add_missing_caption_trash(settings: dict):
-        return _add_missing_caption(settings, 'trash', 100)
+    def add_missing_caption(settings: dict):
+        return _add_missing_caption(settings, 100)
 
     @task.short_circuit()
     def has_more_records(results: list[CaptionStatus]) -> bool:
@@ -69,27 +61,23 @@ def dag():
 
     caption_conf = get_caption_conf()
 
-    process_collection = add_missing_caption_collection(caption_conf)
-    process_archive = add_missing_caption_archive(caption_conf)
-    process_trash = add_missing_caption_trash(caption_conf)
+    process = add_missing_caption(caption_conf)
 
-    process_collection >> process_archive >> process_trash
+    has_more_records([process]) >> trigger_again
 
-    has_more_records([process_collection, process_archive, process_trash]) >> trigger_again
-
-    some_records_processed([process_collection]) >> create_asset
+    some_records_processed([process]) >> create_asset
 
 
 dag()
 
 
-def _add_missing_caption(caption_conf: dict, tree_type: str, limit: int) -> CaptionStatus:
+def _add_missing_caption(caption_conf: dict, limit: int) -> CaptionStatus:
     pg_hook: PostgresHook = PostgresHook.get_hook(Conn.POSTGRES)
     processed_count = 0
 
     while True:
         with open(os.path.join(os.path.dirname(__file__), 'sql', 'caption_select_missing.sql'), 'r') as f:
-            records = pg_hook.get_records(f.read(), parameters=[tree_type])
+            records = pg_hook.get_records(f.read())
 
         if len(records) == 0:
             return CaptionStatus.NO_RECORDS_FOUND

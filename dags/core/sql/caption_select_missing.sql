@@ -1,22 +1,21 @@
 select
-    distinct on (m.hash)
+	distinct on
+	(m.hash)
     m.hash,
-    m.preview,
-    m.abs_filename,
-    CASE
-        WHEN COUNT(*) OVER() >= 5 THEN true
-        ELSE false
-    END as has_more_pages
+	m.preview,
+	m.abs_filename,
+	case
+		when count(*) over() >= 5 then true
+		else false
+	end as has_more_pages
 from
-    core.metadata m
+	core.metadata m
 left join core.caption c on
-    c.hash = m.hash
-join core.tree t on
-    t.abs_filename = m.abs_filename
+	c.hash = m.hash
 where
-    c.hash is null
-    and m.preview is not null
-    and t."type" = %s
+	c.hash is null
+	and m.preview is not null
 order by
-    m.hash, m.abs_filename desc
+	m.hash,
+	m.abs_filename desc
 limit 5
