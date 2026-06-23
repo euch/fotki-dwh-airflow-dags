@@ -1,3 +1,2 @@
 apache-airflow==3.1.5
 apache-airflow-providers-postgres==6.5.1
-apache-airflow-providers-samba==4.12.1
