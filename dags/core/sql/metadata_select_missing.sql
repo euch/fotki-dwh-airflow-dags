@@ -1,5 +1,6 @@
 select
 	t.abs_filename,
+    t.relative_path,
     CASE
         WHEN COUNT(*) OVER() >= 5 THEN true
         ELSE false

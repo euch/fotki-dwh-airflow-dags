@@ -18,15 +18,15 @@ from core import DagId
 def dag():
     @task
     def add_missing_metadata_collection():
-        return _add_missing_metadata(Conn.SMB_COLLECTION, VariableName.STORAGE_PATH_COLLECTION, 'collection')
+        return _add_missing_metadata(Conn.SMB_COLLECTION, 'collection')
 
     @task
     def add_missing_metadata_trash():
-        return _add_missing_metadata(Conn.SMB_TRASH, VariableName.STORAGE_PATH_TRASH, 'trash')
+        return _add_missing_metadata(Conn.SMB_TRASH, 'trash')
 
     @task
     def add_missing_metadata_archive():
-        return _add_missing_metadata(Conn.SMB_ARCHIVE, VariableName.STORAGE_PATH_ARCHIVE, 'archive')
+        return _add_missing_metadata(Conn.SMB_ARCHIVE, 'archive')
 
     _add_missing_metadata_collection = add_missing_metadata_collection()
     _add_missing_metadata_trash = add_missing_metadata_trash()
@@ -52,10 +52,9 @@ def dag():
 dag()
 
 
-def _add_missing_metadata(smb_conn_name: str, remote_root_path_varname: str, tree_type: str):
+def _add_missing_metadata(smb_conn_name: str, tree_type: str):
     pg_hook = PostgresHook.get_hook(Conn.POSTGRES)
     smb_hook = SambaHook.get_hook(smb_conn_name)
-    remote_root_path = Variable.get(remote_root_path_varname)
     endpoint = Variable.get(VariableName.METADATA_ENDPOINT)
     some_added = False
     corrupt_abs_filenames = {''}
@@ -74,8 +73,7 @@ def _add_missing_metadata(smb_conn_name: str, remote_root_path_varname: str, tre
             return result_dict()
 
         for r in records:
-            abs_filename, has_more_records = r[0], r[1]
-            rel_filename = abs_filename.replace(remote_root_path, '')
+            abs_filename, rel_filename, has_more_records = r[0], r[1], r[2]
 
             with smb_hook.open_file(path=rel_filename, mode='rb', share_access='r') as file:
                 response = requests.post(endpoint, files={'file': file}, data={'filename': abs_filename})
