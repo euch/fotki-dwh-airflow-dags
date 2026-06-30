@@ -21,3 +21,14 @@ Delete namespace and check PVCs
 
  kubectl get pvc -n airflow
 ```
+
+
+Airflow connections
+
+ - postgres
+
+Airflow variable names:
+
+- 'GET_FILE_ENDPOINT'
+- 'METADATA_ENDPOINT'
+- 'OLLAMA_ENDPOINT'
