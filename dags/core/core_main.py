@@ -21,17 +21,17 @@ with (DAG(dag_id=DagId.CORE_MAIN, max_active_runs=1, schedule=schedule, default_
 
     trigger_tree_update = TriggerDagRunOperator(task_id='trigger_tree_update',
                                                 trigger_dag_id=DagId.CORE_TREE_UPDATE.value,
-                                                reset_dag_run=True,
+                                                skip_when_already_exists = True,
                                                 wait_for_completion=True)
 
     trigger_metadata_update = TriggerDagRunOperator(task_id='trigger_metadata_update',
                                                     trigger_dag_id=DagId.CORE_METADATA_UPDATE.value,
-                                                    reset_dag_run=True,
+                                                    skip_when_already_exists = True,
                                                     wait_for_completion=True)
 
     trigger_caption_update = TriggerDagRunOperator(task_id='trigger_caption_update',
                                                    trigger_dag_id=DagId.CORE_CAPTION_UPDATE.value,
-                                                   reset_dag_run=True,
-                                                   wait_for_completion=True)
+                                                   skip_when_already_exists = True,
+                                                   wait_for_completion=False)
 
     tree_diff_sensor >> trigger_tree_update >> trigger_metadata_update >> trigger_caption_update
