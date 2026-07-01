@@ -29,6 +29,5 @@ Airflow connections
 
 Airflow variable names:
 
-- 'GET_FILE_ENDPOINT'
 - 'METADATA_ENDPOINT'
 - 'OLLAMA_ENDPOINT'

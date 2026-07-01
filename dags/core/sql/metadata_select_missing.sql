@@ -1,7 +1,7 @@
 select
 	t.abs_filename,
     CASE
-        WHEN COUNT(*) OVER() >= 5 THEN true
+        WHEN COUNT(*) OVER() >= 100 THEN true
         ELSE false
     END as has_more_pages
 from
@@ -17,4 +17,4 @@ where
 	-- ignore specified core.tree records
 order by
     t.abs_filename desc
-limit 5
+limit 100

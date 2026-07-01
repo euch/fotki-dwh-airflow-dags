@@ -10,7 +10,7 @@ from psycopg2 import Binary
 from requests import HTTPError
 
 from connections import POSTGRES
-from variables import ollama_endpoint, get_file_endpoint, metadata_endpoint
+from variables import ollama_endpoint, metadata_endpoint
 
 
 def pg_run(filename: str, parameters: list[object]):
@@ -25,17 +25,6 @@ def pg_get(filename: str, parameters: tuple | list | dict | None = None):
         return pg_hook.get_records(f.read(), parameters=parameters)
 
 
-def file_get(file_path: str) -> bytes | None:
-    url = get_file_endpoint().rstrip('/') + file_path
-    resp = requests.get(url)
-    try:
-        resp.raise_for_status()  # raise an exception for 4xx/5xx codes
-        return resp.content
-    except HTTPError as e:
-        print(e)
-        return None
-
-
 def metadata_select_missing(ignore_abs_filenames: list[str]):
     return pg_get('metadata_select_missing.sql', parameters=[ignore_abs_filenames])
 
@@ -47,11 +36,15 @@ class ImageMetadata:
     preview_base64: str | None
 
 
-def metadata_get(abs_filename: str, file) -> ImageMetadata:
-    resp = requests.post(metadata_endpoint(), files={'file': file}, data={'filename': abs_filename})
-    resp.raise_for_status()  # raise an exception for 4xx/5xx codes
-    metadata = resp.json()
-    return ImageMetadata(metadata['hash'], metadata['exif'], metadata['preview'])
+def metadata_get(abs_filename: str) -> ImageMetadata | None:
+    resp = requests.get(metadata_endpoint(), json={'path': abs_filename})
+    try:
+        resp.raise_for_status()  # raise an exception for 4xx/5xx codes
+        metadata = resp.json()
+        return ImageMetadata(metadata['hash'], metadata['exif'], metadata['preview'])
+    except HTTPError as e:
+        print(e)
+        return None
 
 
 def metadata_insert(abs_filename: str, metadata: ImageMetadata):
