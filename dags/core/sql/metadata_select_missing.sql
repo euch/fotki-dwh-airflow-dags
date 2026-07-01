@@ -12,6 +12,9 @@ where
 	t.size < 1000000000
 	-- up to 1 GB limit
 	and m.abs_filename is null
+	-- core.metadata record missing
+	and NOT (t.abs_filename = ANY(%s::varchar[]))
+	-- ignore specified core.tree records
 order by
     t.abs_filename desc
 limit 5
